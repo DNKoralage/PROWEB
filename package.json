@@ -2,8 +2,9 @@
   "name": "proweb",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.html",
   "scripts": {
+    "start": "node tools/serve.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
