@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    DK â€” site.js
    Renders the whole front page from the content document and wires up the
    interactions: nav, filtering, lightbox, video players and the radio.
@@ -12,7 +12,7 @@
   /** Palette object handed to the procedural art. */
   function palette(doc) {
     var s = doc.site || {};
-    return { deep: '#04160f', mid: '#062417', accent: s.accent || '#2ef2c8', accent2: s.accent2 || '#2b7fff' };
+    return { deep: '#04160f', mid: '#062417', accent: s.accent || '#31e0a1', accent2: s.accent2 || '#6c8cff' };
   }
 
   /** Placeholder image URL for an item that has no uploaded media. */
@@ -143,6 +143,32 @@
       text.appendChild(DK.dom.el('p', { class: 'dk-about__clients', 'data-reveal': '' },
         '<span class="dk-about__clients-label">Selected clients</span>' + esc(a.clients)));
     }
+
+    // Downloadable CV / résumé (path stored in about.cv).
+    if (a.cv) {
+      text.appendChild(DK.dom.el('a', {
+        class: 'dk-btn dk-btn--ghost dk-about__cv', 'data-reveal': '',
+        href: DK.mediaSrc(DK.safeMedia(a.cv)), download: '', target: '_blank',
+        rel: 'noopener', 'data-cursor': 'label', 'data-cursor-label': 'CV'
+      }, 'Download CV'));
+    }
+
+    // Work experience timeline straight from the CV.
+    if (Array.isArray(a.experience) && a.experience.length) {
+      var tl = DK.dom.el('div', { class: 'dk-exp', 'data-reveal': '' });
+      var rows = a.experience.map(function (r) {
+        return '<li class="dk-exp__item">' +
+          '<p class="dk-exp__period">' + esc(r.period || '') + '</p>' +
+          '<h4 class="dk-exp__role">' + esc(r.role || '') + '</h4>' +
+          (r.org ? '<p class="dk-exp__org">' + esc(r.org) + '</p>' : '') +
+          (r.detail ? '<p class="dk-exp__detail">' + esc(r.detail) + '</p>' : '') +
+        '</li>';
+      }).join('');
+      tl.innerHTML = '<h3 class="dk-exp__title">Experience</h3>' +
+                     '<ol class="dk-exp__list">' + rows + '</ol>';
+      text.appendChild(tl);
+    }
+
     inner.appendChild(text);
 
     var media = DK.dom.el('div', { class: 'dk-about__media', 'data-reveal': '', 'data-reveal-delay': '0.2' });
@@ -348,6 +374,47 @@
     return sec;
   }
 
+  /* -------------------------------------------------------------- showcase */
+
+  /** Website showcase: portfolio sites the studio designs and maintains. */
+  function renderShowcase(doc) {
+    var cfg = doc.sections.showcase || {};
+    if (cfg.enabled === false) return null;
+    var items = (doc.collections.showcase || []).slice();
+
+    var sec = DK.dom.el('section', { id: 'showcase', class: 'dk-section dk-showcase' });
+    var inner = DK.dom.el('div', { class: 'dk-container' });
+    inner.innerHTML = sectionHead(cfg, 'showcase');
+
+    var bar = filterBar('showcase', items);
+    if (bar) inner.appendChild(bar);
+
+    var grid = DK.dom.el('div', { class: 'dk-grid dk-grid--showcase' });
+    items.forEach(function (item, i) {
+      var card = DK.dom.el('article', {
+        class: 'dk-card dk-card--site', 'data-category': esc(item.category || ''),
+        'data-id': esc(item.id), tabindex: '0', role: 'button',
+        'data-cursor': 'label', 'data-cursor-label': item.url ? 'Visit' : 'Open'
+      });
+      card.style.setProperty('--i', String(i % 12));
+      card.innerHTML =
+        '<div class="dk-card__media">' +
+          img(item.image, 'photo', item.id + item.title, 1200, 800, doc, 'dk-card__img') +
+          '<span class="dk-card__badge">' + esc(item.category || 'Website') + '</span>' +
+        '</div>' +
+        '<div class="dk-card__body">' +
+          '<h3 class="dk-card__title">' + esc(item.title) + '</h3>' +
+          (item.description ? '<p class="dk-card__desc">' + esc(item.description) + '</p>' : '') +
+          (item.url ? '<span class="dk-card__visit">Visit site &nearr;</span>' : '') +
+        '</div>';
+      grid.appendChild(card);
+    });
+    if (!items.length) grid.appendChild(DK.dom.el('p', { class: 'dk-empty' }, 'No sites yet.'));
+    inner.appendChild(grid);
+    sec.appendChild(inner);
+    return sec;
+  }
+
   /* ----------------------------------------------------------------- journal */
 
   function renderJournal(doc) {
@@ -476,12 +543,19 @@
 
     if (doc.settings.footer.showSocial !== false) {
       var social = DK.dom.el('ul', { class: 'dk-footer__social' });
-      Object.keys(s.social || {}).forEach(function (k) {
-        var url = s.social[k];
-        if (!url) return;
+      // Prefer the editable socialLinks list; fall back to the legacy
+      // fixed-key social object when a stored document predates it.
+      var links = (Array.isArray(s.socialLinks) && s.socialLinks.length)
+        ? s.socialLinks
+        : Object.keys(s.social || {}).filter(function (k) { return !!s.social[k]; })
+            .map(function (k) {
+              return { name: k.charAt(0).toUpperCase() + k.slice(1), url: s.social[k], icon: k };
+            });
+      links.forEach(function (l) {
+        if (!l || !l.url) return;
         social.appendChild(DK.dom.el('li', null,
-          '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
-          esc(k.charAt(0).toUpperCase() + k.slice(1)) + '</a>'));
+          '<a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer">' +
+          esc(l.name || l.icon || 'Link') + '</a>'));
       });
       if (social.children.length) inner.appendChild(social);
     }
@@ -770,6 +844,16 @@
       return;
     }
 
+    if (kind === 'site') {
+      var site = (doc.collections.showcase || []).filter(function (s) { return s.id === id; })[0];
+      if (site && site.url) {
+        global.open(site.url, '_blank', 'noopener');
+      } else if (site) {
+        DK.toast('No live URL saved for this site yet.', 'info');
+      }
+      return;
+    }
+
     if (kind === 'post') {
       var post = (doc.collections.journal || []).filter(function (p) { return p.id === id; })[0];
       if (post) openArticle(post);
@@ -812,7 +896,8 @@
     var root = document.documentElement;
     if (s.accent) root.style.setProperty('--dk-accent', s.accent);
     if (s.accent2) root.style.setProperty('--dk-accent-2', s.accent2);
-    if (s.name) document.title = s.name + (s.tagline ? ' â€” ' + s.tagline : '');
+    if (s.browserTitle) document.title = s.browserTitle;
+    if (s.name && !s.browserTitle) document.title = s.name + (s.tagline ? ' â€” ' + s.tagline : '');
     if (doc.branding && doc.branding.favicon) {
       var link = document.querySelector('link[rel="icon"]');
       if (link) link.href = DK.mediaSrc(doc.branding.favicon);
@@ -951,17 +1036,15 @@
     var refs = {};
 
     [renderHero(doc), renderAbout(doc), renderLogos(doc), renderGraphics(doc),
-     renderPhotography(doc), renderVideography(doc), renderJournal(doc)]
+     renderPhotography(doc), renderVideography(doc), renderShowcase(doc), renderJournal(doc)]
       .forEach(function (sec) { if (sec) main.appendChild(sec); });
 
     // Custom pages flagged to appear in the nav sit after the journal.
     (doc.pages || []).filter(function (p) { return p.published !== false && p.inNav; })
       .forEach(function (page) { main.appendChild(pageSection(page)); });
 
-    // My Servers sits at the very bottom of the page: an animated radio
-    // player whose stations double as placeholders for running servers.
-    main.appendChild(contactSection(doc));
-
+    // My Servers: an animated radio player whose stations double as
+    // placeholders for running servers.
     if (doc.sections.radio && doc.sections.radio.enabled !== false) {
       var radio = DK.radio.markup({
         radio: doc.radio,
@@ -973,6 +1056,9 @@
       }
       main.appendChild(radio);
     }
+
+    // Contact closes the page, sitting directly before the footer.
+    main.appendChild(contactSection(doc));
     app.appendChild(main);
     app.appendChild(renderFooter(doc));
 

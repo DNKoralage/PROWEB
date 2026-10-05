@@ -32,7 +32,7 @@ function checkSvg(svg, label) {
   assert.strictEqual(open, close + self, label + ': tags balance (' + open + ' vs ' + close + '+' + self + ')');
 }
 
-const pal = { deep: '#04160f', mid: '#062417', accent: '#2ef2c8', accent2: '#2b7fff' };
+const pal = { deep: '#04160f', mid: '#062417', accent: '#31e0a1', accent2: '#6c8cff' };
 checkSvg(F.backdrop(1337, 1600, 900, pal), 'backdrop');
 checkSvg(F.foreground(77, 1600, 900, pal, { count: 18 }), 'foreground');
 checkSvg(F.foreground(77, 1600, 900, pal, { count: 9, animate: false }), 'foreground no-anim');

@@ -107,26 +107,81 @@
   }
 /* ------------------------------------------------------- reveal on scroll */
 
-  /** Fade/slide elements in as they enter the viewport. */
+  /**
+   * Fade/slide elements in as they enter the viewport.
+   *
+   * The observer alone can miss nodes: content rendered behind the intro, or
+   * jumped straight to via a hash link, may already sit inside (or above) the
+   * viewport when it is first observed, in which case no intersection change
+   * fires and the element stays at opacity 0. So alongside the observer we
+   * run a cheap rect sweep on load, hashchange and a throttled scroll — any
+   * node whose top has reached the fold is revealed immediately (delays still
+   * apply), and nodes scrolled past from a jump are revealed too.
+   */
   function observeReveals(root) {
     var nodes = DK.dom.qsa('[data-reveal]:not(.is-revealed)', root);
     if (!nodes.length) return;
 
+    function show(el) {
+      if (!el || el.classList.contains('is-revealed') || el.__dkRevealing) return;
+      var delay = parseFloat(el.dataset.revealDelay || 0);
+      if (delay > 0) {
+        el.__dkRevealing = true;
+        setTimeout(function () { el.__dkRevealing = false; el.classList.add('is-revealed'); }, delay * 1000);
+      } else {
+        el.classList.add('is-revealed');
+      }
+    }
+
+    function sweep() {
+      if (!nodes.length) return;
+      var fold = (global.innerHeight || 0) * 0.94;
+      var remaining = [];
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (el.classList.contains('is-revealed')) continue;
+        // Negative top: jumped past from a hash/anchor navigation.
+        var top = el.getBoundingClientRect().top;
+        if (top <= fold) show(el);
+        else remaining.push(el);
+      }
+      nodes = remaining;
+    }
+
     if (!global.IntersectionObserver) {
-      nodes.forEach(function (n) { n.classList.add('is-revealed'); });
+      nodes.forEach(show);
+      nodes = [];
       return;
     }
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         if (!e.isIntersecting) return;
-        var el = e.target;
-        var delay = parseFloat(el.dataset.revealDelay || 0);
-        setTimeout(function () { el.classList.add('is-revealed'); }, delay * 1000);
-        io.unobserve(el);
+        show(e.target);
+        io.unobserve(e.target);
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
 
     nodes.forEach(function (n) { io.observe(n); });
+
+    // Safety net for nodes the observer never fires for.
+    var ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      global.requestAnimationFrame(function () { ticking = false; sweep(); });
+    }
+    sweep();
+    global.addEventListener('scroll', onScroll, { passive: true });
+    global.addEventListener('resize', onScroll, { passive: true });
+    global.addEventListener('hashchange', sweep);
+    // Once everything has revealed, drop the listener.
+    var stopCheck = setInterval(function () {
+      if (!nodes.length) {
+        global.removeEventListener('scroll', onScroll);
+        global.removeEventListener('resize', onScroll);
+        clearInterval(stopCheck);
+      }
+    }, 1000);
   }
 
   /** Smooth in-page scrolling that respects the reduced-motion setting. */

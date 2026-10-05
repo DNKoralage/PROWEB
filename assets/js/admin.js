@@ -83,7 +83,7 @@
 
     var bg = DK.dom.el('div', { class: 'adm-login__bg', 'aria-hidden': 'true' });
     if (DK.foliage && DK.foliage.loaderLayers) {
-      DK.foliage.loaderLayers({ deep: '#04160f', accent: '#2ef2c8', accent2: '#2b7fff' })
+      DK.foliage.loaderLayers({ deep: '#04160f', accent: '#31e0a1', accent2: '#6c8cff' })
         .forEach(function (layer) {
           var div = DK.dom.el('div', { class: 'dk-loader-layer', 'data-layer': layer.name });
           div.innerHTML = layer.html;
@@ -103,7 +103,6 @@
       '<p class="adm-login__error" id="adm-login-error" role="alert"></p>' +
       '<button type="submit" class="adm-btn adm-btn--primary" style="justify-content:center">Unlock dashboard</button>' +
       '<div class="adm-login__foot">' +
-      '<span>Default passcode: <strong>dk-admin</strong></span>' +
       '<a href="index.html">&larr; Back to site</a></div>';
     wrap.appendChild(card);
     root.appendChild(wrap);
@@ -144,10 +143,104 @@
     return prefix + '-' + Date.now().toString(36) + uidCounters[prefix];
   }
 
+  /* ---------------------------------------------------------------- upload */
+
+  /**
+   * POST a file to api/upload.php (Hostinger/PHP hosts) and return the stored
+   * relative path. Falls back to data-URL embedding when no endpoint answers,
+   * so the dashboard still works on hosts without PHP (small files only).
+   */
+  function uploadFile(file, onOk, onErr) {
+    var endpoint = DK.basePath() + 'api/upload.php';
+    var fd = new FormData();
+    fd.append('file', file);
+
+    fetch(endpoint, {
+      method: 'POST',
+      body: fd,
+      // Same gate value the dashboard session uses; stops naive drive-by
+      // posts without pretending to be real authentication.
+      headers: { 'X-DK-Token': gate() }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j && j.ok && j.path) onOk(j.path);
+        else if (j && j.error) {
+          // Endpoint replied but refused — surface it, no silent fallback.
+          onErr(j.error);
+        } else {
+          onErr('Upload rejected.');
+        }
+      })
+      .catch(function () {
+        // No PHP endpoint (file:// or static-only host): embed as a data URL
+        // so the edit still works. Warn for large files.
+        if (file.size > 2 * 1024 * 1024) {
+          onErr('Upload endpoint unavailable and file is over 2 MB — set a URL instead.');
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () { onOk(String(reader.result)); };
+        reader.onerror = function () { onErr('Could not read the file.'); };
+        reader.readAsDataURL(file);
+      });
+  }
+
+  /**
+   * Text input for an image/media path plus an Upload button.
+   * @param {object} o field options (path, label, hint, accept)
+   */
+  function uploadField(o, value) {
+    var wrap = DK.dom.el('div', { class: 'adm-field adm-field--upload' });
+    wrap.appendChild(DK.dom.el('span', null, esc(o.label)));
+
+    var row = DK.dom.el('div', { class: 'adm-field__row' });
+    var input = DK.dom.el('input', { type: 'text' });
+    input.value = value === undefined || value === null ? '' : String(value);
+    input.addEventListener('input', function () { setPath(o.path, input.value); });
+
+    var btn = DK.dom.el('button', {
+      type: 'button', class: 'adm-btn adm-btn--sm'
+    }, 'Upload');
+    btn.addEventListener('click', function () {
+      var picker = DK.dom.el('input', {
+        type: 'file', accept: o.accept || 'image/*'
+      });
+      picker.addEventListener('change', function () {
+        var file = picker.files && picker.files[0];
+        if (!file) return;
+        btn.disabled = true;
+        btn.textContent = 'Uploading...';
+        uploadFile(file, function (path) {
+          btn.disabled = false;
+          btn.textContent = 'Upload';
+          input.value = path;
+          setPath(o.path, path);
+          if (DK.sound) DK.sound.play('success');
+          DK.toast('Uploaded ' + path, 'success');
+          renderPanel();
+        }, function (msg) {
+          btn.disabled = false;
+          btn.textContent = 'Upload';
+          if (DK.sound) DK.sound.play('error');
+          DK.toast(msg, 'error');
+        });
+      });
+      picker.click();
+    });
+
+    row.appendChild(input);
+    row.appendChild(btn);
+    wrap.appendChild(row);
+    if (o.hint) wrap.appendChild(DK.dom.el('small', { class: 'adm-field__note' }, esc(o.hint)));
+    return wrap;
+  }
+
   /**
    * Build one labelled control bound to a dotted path.
    * @param {object} o { path, label, type, options, rows, hint, min, max }
-   *   type: text | textarea | number | url | color | check | select | csv
+   *   type: text | textarea | number | url | color | check | select | csv |
+   *         image (text input + Upload button → api/upload.php)
    */
   function field(o) {
     var type = o.type || 'text';
@@ -162,6 +255,8 @@
       lab.appendChild(DK.dom.el('span', null, esc(o.label)));
       return lab;
     }
+
+    if (type === 'image') return uploadField(o, value);
 
     var wrap = DK.dom.el('label', { class: 'adm-field' + (type === 'color' ? ' adm-field--color' : '') });
     wrap.appendChild(DK.dom.el('span', null, esc(o.label)));
@@ -333,7 +428,7 @@
           } else {
             body.appendChild(field({
               path: base + '.' + f.key, label: f.label, type: f.type,
-              options: f.options, rows: f.rows, hint: f.hint
+              options: f.options, rows: f.rows, hint: f.hint, accept: f.accept
             }));
           }
         });
@@ -372,7 +467,7 @@
       (o.schema || []).forEach(function (f) {
         grid.appendChild(field({
           path: base + '.' + f.key, label: f.label,
-          type: f.type, rows: f.rows, options: f.options
+          type: f.type, rows: f.rows, options: f.options, hint: f.hint
         }));
       });
       row.appendChild(grid);
@@ -394,7 +489,7 @@
 
   /* --------------------------------------------------------------- schemas */
 
-  var IMG_SUB = { schema: [{ key: 'src', label: 'Image src' }, { key: 'caption', label: 'Caption' }] };
+  var IMG_SUB = { schema: [{ key: 'src', label: 'Image src', type: 'image' }, { key: 'caption', label: 'Caption' }] };
 
   function newId(p) { return uid(p); }
 
@@ -405,10 +500,13 @@
     if (kind === 'photography') return { id: newId('p'), title: 'New album', category: 'Nature', cover: '', description: '', date: '', location: '', order: 0, photos: [] };
     if (kind === 'videography') return { id: newId('v'), title: 'New film', category: 'Documentary', type: 'link', url: '', poster: '', description: '', duration: '', order: 0 };
     if (kind === 'journal') return { id: newId('j'), title: 'New post', date: '', excerpt: '', body: '', tags: [], cover: '', published: true, order: 0 };
+    if (kind === 'showcase') return { id: newId('w'), title: 'New site', category: 'Website', image: '', url: '', description: '', order: 0 };
+    if (kind === 'experience') return { id: newId('exp'), role: 'New role', org: '', period: '', detail: '', order: 0 };
+    if (kind === 'social') return { id: newId('sl'), name: 'New network', url: '', icon: '' };
     if (kind === 'nav') return { id: newId('nav'), label: 'New link', href: '#top', visible: true };
     if (kind === 'pages') return { id: newId('pg'), title: 'New page', slug: 'new-page', body: '', published: false, inNav: false, order: 0 };
     if (kind === 'stats') return { id: newId('s'), value: '0', label: 'New stat' };
-    if (kind === 'stations') return { id: newId('r'), name: 'New server', url: '', genre: 'Ambient', color: '#2ef2c8', enabled: true };
+    if (kind === 'stations') return { id: newId('r'), name: 'New server', url: '', genre: 'Ambient', color: '#31e0a1', enabled: true };
     if (kind === 'photo') return { id: newId('ph'), src: '', caption: '', order: 0 };
     return { id: newId('x') };
   }
@@ -417,7 +515,7 @@
     logos: [
       { key: 'title', label: 'Title' }, { key: 'client', label: 'Client' },
       { key: 'category', label: 'Category' }, { key: 'year', label: 'Year' },
-      { key: 'image', label: 'Image src', type: 'url' }, { key: 'alt', label: 'Alt text' },
+      { key: 'image', label: 'Image', type: 'image' }, { key: 'alt', label: 'Alt text' },
       { key: 'description', label: 'Description', type: 'textarea', rows: 3 },
       { key: 'tags', label: 'Tags (comma separated)', type: 'csv' },
       { key: 'featured', label: 'Featured', type: 'check' }
@@ -433,7 +531,7 @@
     ],
     photography: [
       { key: 'title', label: 'Album title' }, { key: 'category', label: 'Category' },
-      { key: 'cover', label: 'Cover src', type: 'url' },
+      { key: 'cover', label: 'Cover', type: 'image' },
       { key: 'description', label: 'Description', type: 'textarea', rows: 3 },
       { key: 'date', label: 'Date', hint: 'YYYY-MM-DD' },
       { key: 'location', label: 'Location' },
@@ -443,7 +541,7 @@
       { key: 'title', label: 'Title' }, { key: 'category', label: 'Category' },
       { key: 'type', label: 'Source', type: 'select', options: ['link', 'upload'] },
       { key: 'url', label: 'Video URL', type: 'url' },
-      { key: 'poster', label: 'Poster src', type: 'url' },
+      { key: 'poster', label: 'Poster', type: 'image' },
       { key: 'description', label: 'Description', type: 'textarea', rows: 3 },
       { key: 'duration', label: 'Duration', hint: 'MM:SS' }
     ],
@@ -452,8 +550,26 @@
       { key: 'excerpt', label: 'Excerpt', type: 'textarea', rows: 3 },
       { key: 'body', label: 'Body (markdown)', type: 'textarea', rows: 8 },
       { key: 'tags', label: 'Tags (comma separated)', type: 'csv' },
-      { key: 'cover', label: 'Cover src', type: 'url' },
+      { key: 'cover', label: 'Cover', type: 'image' },
       { key: 'published', label: 'Published', type: 'check' }
+    ],
+    showcase: [
+      { key: 'title', label: 'Site title' },
+      { key: 'category', label: 'Category' },
+      { key: 'image', label: 'Preview image', type: 'image' },
+      { key: 'url', label: 'Live URL', type: 'url', hint: 'Opens in a new tab' },
+      { key: 'description', label: 'Description', type: 'textarea', rows: 3 }
+    ],
+    experience: [
+      { key: 'role', label: 'Role' },
+      { key: 'org', label: 'Organisation' },
+      { key: 'period', label: 'Period', hint: 'e.g. 2021 – 2025' },
+      { key: 'detail', label: 'Detail', type: 'textarea', rows: 3 }
+    ],
+    social: [
+      { key: 'name', label: 'Name' },
+      { key: 'url', label: 'URL', type: 'url' },
+      { key: 'icon', label: 'Icon key', hint: 'linkedin, facebook, instagram...' }
     ],
     nav: [
       { key: 'label', label: 'Label' }, { key: 'href', label: 'Href', hint: '#section id' },
@@ -486,6 +602,7 @@
     if (kind === 'albums') return (col.photography || []).length;
     if (kind === 'videos') return (col.videography || []).length;
     if (kind === 'posts') return (col.journal || []).length;
+    if (kind === 'showcase') return (col.showcase || []).length;
     if (kind === 'pages') return (doc.pages || []).length;
     if (kind === 'nav') return (doc.nav || []).length;
     if (kind === 'frames') return (col.photography || []).reduce(function (n, a) {
@@ -547,6 +664,7 @@
         { path: 'site.name', label: 'Short name (nav + title)' },
         { path: 'site.fullName', label: 'Full name' },
         { path: 'site.tagline', label: 'Tagline' },
+        { path: 'site.browserTitle', label: 'Browser tab title', hint: 'Shown in the tab / history' },
         { path: 'site.accent', label: 'Accent', type: 'color' },
         { path: 'site.accent2', label: 'Accent 2', type: 'color' }
       ]));
@@ -563,15 +681,14 @@
         { path: 'site.footerNote', label: 'Footer note' }
       ]));
 
-      var social = card('Social links', 'Leave blank to hide');
-      social.appendChild(fields([
-        { path: 'site.social.instagram', label: 'Instagram', type: 'url' },
-        { path: 'site.social.behance', label: 'Behance', type: 'url' },
-        { path: 'site.social.dribbble', label: 'Dribbble', type: 'url' },
-        { path: 'site.social.youtube', label: 'YouTube', type: 'url' },
-        { path: 'site.social.vimeo', label: 'Vimeo', type: 'url' },
-        { path: 'site.social.linkedin', label: 'LinkedIn', type: 'url' }
-      ]));
+      // Editable social list (site.socialLinks). The legacy fixed-key
+      // site.social object is migrated into it by DK.normalise on load.
+      var social = listEditor({
+        path: 'site.socialLinks', title: 'Social links',
+        hint: 'Shown in the footer. Leave the URL blank to hide an entry.',
+        schema: SCHEMAS.social, addLabel: 'Add link',
+        makeNew: function () { return makeNew('social'); }, nameKey: 'name'
+      });
 
       return [identity, contact, social];
     },
@@ -589,7 +706,7 @@
       var hero = card('Hero');
       hero.appendChild(fields([
         { path: 'hero.eyebrow', label: 'Eyebrow' },
-        { path: 'hero.image', label: 'Background image', type: 'url' },
+        { path: 'hero.image', label: 'Background image', type: 'image' },
         { path: 'hero.title', label: 'Title' },
         { path: 'hero.titleAccent', label: 'Accent line' },
         { path: 'hero.subtitle', label: 'Subtitle', type: 'textarea', rows: 3 }
@@ -614,14 +731,23 @@
       var about = card('About');
       about.appendChild(fields([
         { path: 'about.title', label: 'Title' },
-        { path: 'about.image', label: 'Portrait image', type: 'url' },
+        { path: 'about.image', label: 'Portrait', type: 'image' },
         { path: 'about.clients', label: 'Selected clients' },
-        { path: 'about.skills', label: 'Skills (comma separated)', type: 'csv' }
+        { path: 'about.skills', label: 'Skills (comma separated)', type: 'csv' },
+        { path: 'about.cv', label: 'CV / résumé', type: 'image', accept: '.pdf,.doc,.docx', hint: 'PDF or DOC, shown as a Download CV button' }
       ]));
       about.appendChild(fields([
         { path: 'about.body', label: 'Body', type: 'textarea', rows: 5 }
       ], true));
-      return [about];
+
+      var exp = listEditor({
+        path: 'about.experience', title: 'Experience timeline',
+        hint: 'Entries from the CV, shown under the About summary.',
+        schema: SCHEMAS.experience, addLabel: 'Add role',
+        makeNew: function () { return makeNew('experience'); }, nameKey: 'role'
+      });
+
+      return [about, exp];
     },
 
     sections: function () {
@@ -680,6 +806,15 @@
     })];
   };
 
+  renderers.showcase = function () {
+    return [listEditor({
+      path: 'collections.showcase', title: 'Website showcase',
+      hint: 'Portfolio websites you design, build and maintain.',
+      schema: SCHEMAS.showcase, addLabel: 'Add site',
+      makeNew: function () { return makeNew('showcase'); }, nameKey: 'title'
+    })];
+  };
+
   renderers.journal = function () {
     return [listEditor({
       path: 'collections.journal', title: 'Journal',
@@ -723,7 +858,7 @@
 
     var viz = card('Wave visualizer');
     viz.appendChild(fields([
-      { path: 'radio.visualizer.style', label: 'Style', type: 'select', options: ['wave', 'bars', 'ribbon'] },
+      { path: 'radio.visualizer.style', label: 'Style', type: 'select', options: ['wave', 'bars', 'ribbon', 'orbit'] },
       { path: 'radio.visualizer.color', label: 'Colour 1', type: 'color' },
       { path: 'radio.visualizer.color2', label: 'Colour 2', type: 'color' },
       { path: 'radio.visualizer.bars', label: 'Resolution', type: 'number', min: 16, max: 256 },
@@ -797,6 +932,7 @@
     { id: 'graphics', label: 'Graphic design', group: 'Collections', count: 'graphics' },
     { id: 'photography', label: 'Photography albums', group: 'Collections', count: 'albums' },
     { id: 'videography', label: 'Videography', group: 'Collections', count: 'videos' },
+    { id: 'showcase', label: 'Website showcase', group: 'Collections', count: 'showcase' },
     { id: 'journal', label: 'Journal', group: 'Collections', count: 'posts' },
     { id: 'pages', label: 'Pages', group: 'Collections', count: 'pages' },
     { id: 'servers', label: 'My Servers', group: 'Infrastructure', count: 'server' },

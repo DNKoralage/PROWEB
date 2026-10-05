@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    DK â€” radio.js
    Custom streaming radio player with an animated canvas visualizer.
    Falls back to a synthetic (simulated) visualizer when the stream does not
@@ -126,7 +126,7 @@
 /* ------------------------------------------------------------- visualizer */
 
   /**
-   * Canvas visualiser. Supports 'wave', 'bars' and 'orbit' styles.
+   * Canvas visualiser. Supports 'wave', 'bars', 'ribbon' and 'orbit' styles.
    * Uses real analyser data when the stream allows it, and otherwise
    * synthesises a plausible spectrum so the player never looks dead.
    */
@@ -136,8 +136,8 @@
     this.opts = opts || {};
     this.style = this.opts.style || 'wave';
     this.bars = Math.max(16, Math.min(128, Number(this.opts.bars) || 64));
-    this.color = this.opts.color || '#2ef2c8';
-    this.color2 = this.opts.color2 || '#2b7fff';
+    this.color = this.opts.color || '#31e0a1';
+    this.color2 = this.opts.color2 || '#6c8cff';
     this.smoothing = this.opts.smoothing === undefined ? 0.82 : this.opts.smoothing;
     this.levels = new Float32Array(this.bars);
     this.analyser = null;
@@ -212,8 +212,61 @@
     this.grad = g;
 
     if (this.style === 'bars') this.drawBars();
+    else if (this.style === 'ribbon') this.drawRibbon();
     else if (this.style === 'orbit') this.drawOrbit();
     else this.drawWave();
+  };
+
+  /**
+   * Ribbon: a wave that grows out of the centre line. The envelope peaks at
+   * the middle of the canvas and tapers to the edges, and the phase travels
+   * outward from the centre, so the trace reads as two waves being emitted
+   * left and right from the middle.
+   */
+  Visualizer.prototype.drawRibbon = function () {
+    var c = this.ctx, w = this.w, h = this.h, n = this.bars;
+    var mid = h / 2, cx = w / 2;
+    var t = this._t = (this._t || 0) + 0.016;
+
+    function envelope(x) {
+      var d = Math.abs(x - cx) / cx;          // 0 at centre, 1 at the edges
+      return Math.max(0, 1 - d * d);           // smooth falloff
+    }
+
+    var steps = Math.max(2, Math.floor(w / 4));
+    var top = [], bottom = [];
+    for (var i = 0; i <= steps; i++) {
+      var px = (i / steps) * w;
+      var idx = Math.min(n - 1, Math.floor((Math.abs(px - cx) / cx) * (n - 1) || 0));
+      var amp = this.levels[idx] * mid * 0.85;
+      // Phase runs outward from the centre in both directions.
+      var phase = Math.abs(px - cx) * 0.045 - t * 3.2;
+      var y = Math.sin(phase) * amp * envelope(px);
+      top.push(px, mid - y);
+      bottom.push(px, mid + y);
+    }
+
+    c.beginPath();
+    for (var j = 0; j < top.length; j += 2) {
+      if (j === 0) c.moveTo(top[j], top[j + 1]); else c.lineTo(top[j], top[j + 1]);
+    }
+    for (var k = bottom.length - 2; k >= 0; k -= 2) c.lineTo(bottom[k], bottom[k + 1]);
+    c.closePath();
+    c.globalAlpha = 0.22;
+    c.fillStyle = this.grad;
+    c.fill();
+    c.globalAlpha = 1;
+
+    c.strokeStyle = this.grad;
+    c.lineWidth = 2.5;
+    c.lineJoin = 'round';
+    [top, bottom].forEach(function (pts) {
+      c.beginPath();
+      for (var i2 = 0; i2 < pts.length; i2 += 2) {
+        if (i2 === 0) c.moveTo(pts[i2], pts[i2 + 1]); else c.lineTo(pts[i2], pts[i2 + 1]);
+      }
+      c.stroke();
+    });
   };
 
   Visualizer.prototype.drawBars = function () {

@@ -108,8 +108,8 @@
       // Populate the procedural foliage behind the monogram.
       var layers = DK.foliage.loaderLayers({
         deep: '#04160f',
-        accent: (cfg.site && cfg.site.accent) || '#2ef2c8',
-        accent2: (cfg.site && cfg.site.accent2) || '#2b7fff'
+        accent: (cfg.site && cfg.site.accent) || '#31e0a1',
+        accent2: (cfg.site && cfg.site.accent2) || '#6c8cff'
       });
       var bg = node.querySelector('.dk-loader-bg');
       layers.forEach(function (layer, i) {

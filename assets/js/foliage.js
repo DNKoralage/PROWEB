@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    DK â€” foliage.js
    Procedural jungle artwork. Every leaf, frond and treeline layer is generated
    from a seed, so the site ships without any binary assets and the artwork
@@ -42,7 +42,7 @@
 
   /** Deep-to-bright jungle greens, dark enough for white text on top. */
   var GREENS = ['#04160f', '#062417', '#08351f', '#0b4a2b', '#0f6036', '#137a44'];
-  var ACCENTS = ['#2ef2c8', '#2b7fff', '#7b5cff', '#22d3ee'];
+  var ACCENTS = ['#31e0a1', '#6c8cff', '#7b5cff', '#22d3ee'];
 
   function shade(hex, amt) {
     var n = parseInt(hex.slice(1), 16);
@@ -139,7 +139,7 @@
     var r = rng(seed);
     var deep = pal.deep || '#04160f';
     var mid = pal.mid || '#062417';
-    var accent = pal.accent || '#2ef2c8';
+    var accent = pal.accent || '#31e0a1';
 
     var body = '<defs>' +
       '<linearGradient id="sky' + seed + '" x1="0" y1="0" x2="0" y2="1">' +
@@ -211,7 +211,7 @@
     opts = opts || {};
     var pal = palette || {};
     var r = rng(seed + 991);
-    var accent = pal.accent || '#2ef2c8';
+    var accent = pal.accent || '#31e0a1';
     var body = '<defs><linearGradient id="fg' + seed + '" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0%" stop-color="' + shade(pal.deep || '#04160f', 0.10) + '"/>' +
       '<stop offset="100%" stop-color="#010705"/>' +
@@ -275,8 +275,8 @@
     var pal = palette || {};
     var s = hashStr(kind + ':' + (seed || 'dk'));
     var r = rng(s);
-    var accent = pal.accent || '#2ef2c8';
-    var accent2 = pal.accent2 || '#2b7fff';
+    var accent = pal.accent || '#31e0a1';
+    var accent2 = pal.accent2 || '#6c8cff';
     var deep = pal.deep || '#04160f';
     var uid = 'p' + s.toString(36);
 
@@ -377,7 +377,7 @@
       return [
         { name: 'far', html: backdrop(1337, 1600, 900, p), speed: 0.06, opacity: 0.85 },
         { name: 'mid', html: backdrop(4242, 1600, 900,
-            { deep: p.mid || '#062417', accent: p.accent2 || '#2b7fff' }), speed: 0.14, opacity: 0.9 },
+            { deep: p.mid || '#062417', accent: p.accent2 || '#6c8cff' }), speed: 0.14, opacity: 0.9 },
         { name: 'near', html: foreground(77, 1600, 900, p, { count: 18 }), speed: 0.3, opacity: 1 },
         { name: 'fore', html: foreground(808, 1600, 900,
             { deep: '#010705', accent: p.accent }, { count: 9 }), speed: 0.48, opacity: 1 }

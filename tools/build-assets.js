@@ -11,7 +11,7 @@ require('../assets/js/foliage.js');
 const fs = require('fs');
 const path = require('path');
 const F = global.DK.foliage;
-const pal = { deep: '#04160f', mid: '#062417', accent: '#2ef2c8', accent2: '#2b7fff' };
+const pal = { deep: '#04160f', mid: '#062417', accent: '#31e0a1', accent2: '#6c8cff' };
 
 const up = path.join(__dirname, '..', 'uploads');
 fs.mkdirSync(up, { recursive: true });

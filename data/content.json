@@ -3,12 +3,13 @@
   "site": {
     "name": "DK",
     "fullName": "Devnith Koralage",
-    "tagline": "Devnith Koralage Creative Studio",
-    "description": "Multidisciplinary creative portfolio — logos, graphic design campaigns, photography and film.",
-    "accent": "#2ef2c8",
-    "accent2": "#2b7fff",
+    "tagline": "Full-Stack Web Developer & Systems Engineer | Multimedia Producer",
+    "browserTitle": "Devnith Koralage — Full-Stack Web Developer & Systems Engineer",
+    "description": "Devnith Koralage — full-stack web developer, systems engineer and multimedia producer with hands-on experience running broadcast infrastructure, streaming servers and 20+ active web platforms.",
+    "accent": "#31e0a1",
+    "accent2": "#6c8cff",
     "contactEmail": "hello@dk.studio",
-    "phone": "",
+    "phone": "+94 78 798 4875",
     "location": "Colombo, Sri Lanka",
     "availability": "Available for commissions",
     "social": {
@@ -17,9 +18,30 @@
       "dribbble": "https://dribbble.com/",
       "youtube": "https://youtube.com/",
       "vimeo": "",
-      "linkedin": ""
+      "linkedin": "",
+      "facebook": "https://facebook.com/DNKoralage1"
     },
-    "footerNote": "Crafted in the jungle."
+    "socialLinks": [
+      {
+        "id": "sl1",
+        "name": "LinkedIn",
+        "url": "https://linkedin.com/in/dnkoralage1",
+        "icon": "linkedin"
+      },
+      {
+        "id": "sl2",
+        "name": "Facebook",
+        "url": "https://facebook.com/DNKoralage1",
+        "icon": "facebook"
+      },
+      {
+        "id": "sl3",
+        "name": "Instagram",
+        "url": "https://instagram.com/DNKoralage1",
+        "icon": "instagram"
+      }
+    ],
+    "footerNote": "Turning ideas into reality."
   },
   "settings": {
     "preloader": {
@@ -100,25 +122,32 @@
       "order": 3
     },
     {
+      "id": "nav-7",
+      "label": "Showcase",
+      "href": "#showcase",
+      "visible": true,
+      "order": 4
+    },
+    {
       "id": "nav-5",
       "label": "Servers",
       "href": "#radio",
       "visible": true,
-      "order": 4
+      "order": 5
     },
     {
       "id": "nav-6",
       "label": "Contact",
       "href": "#contact",
       "visible": true,
-      "order": 5
+      "order": 6
     }
   ],
   "hero": {
-    "eyebrow": "Design · photography · film",
+    "eyebrow": "Full-stack web developer · Systems engineer · Multimedia producer",
     "title": "Devnith Koralage",
-    "titleAccent": "Creative Studio",
-    "subtitle": "Logos, campaigns, photography and film — built in deep jungle greens with electric light.",
+    "titleAccent": "Full-Stack Web Developer & Systems Engineer",
+    "subtitle": "Multimedia producer running enterprise-grade broadcast infrastructure, streaming servers and 20+ active web platforms — software engineering with a producer’s eye.",
     "image": "",
     "ctaText": "Explore the work",
     "ctaHref": "#work",
@@ -127,34 +156,60 @@
     "stats": [
       {
         "id": "s1",
-        "value": "120+",
-        "label": "Projects delivered"
+        "value": "20+",
+        "label": "Active web platforms"
       },
       {
         "id": "s2",
-        "value": "9",
-        "label": "Years in the field"
+        "value": "24/7",
+        "label": "Live radio broadcast pioneer"
       },
       {
         "id": "s3",
-        "value": "34",
-        "label": "Campaigns"
+        "value": "2nd",
+        "label": "All-island media award"
       }
     ]
   },
   "about": {
-    "title": "The studio",
-    "body": "A multidisciplinary practice working across identity, print, photography and motion. Every project starts the same way: listen to the terrain, then build something that can survive it.",
+    "title": "Professional summary",
+    "cv": "uploads/Devnith_Koralage_Professional_CV.pdf",
+    "body": "Results-driven Full-Stack Web Developer, Systems Engineer, and Multimedia Producer with extensive hands-on experience managing enterprise-grade broadcast infrastructure, streaming servers, and 20+ active web platforms. Proven leadership track record managing technical operations for pioneer digital media networks, combining robust software engineering capabilities with advanced digital content production.",
     "image": "",
     "skills": [
-      "Brand identity",
-      "Art direction",
-      "Graphic design",
-      "Photography",
-      "Motion & film",
-      "Sound design"
+      "Web development — full-stack design, frontend/backend architecture & CMS",
+      "Systems & broadcasting — streaming server architecture, 24/7 YouTube automation",
+      "Multimedia & production — After Effects, Filmora, CapCut, cinematography, directing, scriptwriting",
+      "Audio engineering — FL Studio, Cubase, composition & production",
+      "Leadership & management — strategic planning, technical project management"
     ],
-    "clients": "Northwind Coffee, Johnian School Walk, Verde Market, Kestrel Studio, Halo Records"
+    "clients": "Indusara Media Network · Indusara TV · Nysco TV · Nysco Radio · Luminex",
+    "experience": [
+      {
+        "id": "e1",
+        "role": "Systems Engineer & Technical Producer",
+        "org": "Indusara Media Network / Indusara TV",
+        "period": "2021 – 2025",
+        "detail": "Managed the complete technical back-end infrastructure, web development and high-performance streaming servers for Sri Lanka’s pioneer Web TV network (indusara.lk). Maintained technical infrastructure, uptime and database management for 20+ active websites and platforms, including radioeka.lk.",
+        "order": 1
+      },
+      {
+        "id": "e2",
+        "role": "Software Engineer & Tech Operations",
+        "org": "Nysco TV & Nysco Radio",
+        "period": "April 2022 – Present",
+        "detail": "Directing software development initiatives, broadcast systems engineering and technical network operations. Collaborating with cross-functional teams to integrate automated web systems with broadcast streams.",
+        "order": 2
+      },
+      {
+        "id": "e3",
+        "role": "Founder & Lead Creative",
+        "org": "Luminex",
+        "period": "Present",
+        "detail": "Leading an independent creative venture delivering full-stack web solutions, digital infrastructure and high-impact multimedia content.",
+        "order": 3
+      }
+    ]
   },
   "sections": {
     "logos": {
@@ -184,6 +239,12 @@
       "title": "Videography",
       "kicker": "Film",
       "blurb": "Direct uploads or hosted links."
+    },
+    "showcase": {
+      "enabled": true,
+      "title": "Website showcase",
+      "kicker": "Showcase",
+      "blurb": "Portfolio websites I have designed, built and maintain — preview and visit them live."
     },
     "journal": {
       "enabled": true,
@@ -400,6 +461,17 @@
         "order": 1
       }
     ],
+    "showcase": [
+      {
+        "id": "w1",
+        "title": "Indusara.lk platform",
+        "category": "Broadcast web",
+        "image": "",
+        "url": "",
+        "description": "Long-form web platform for a pioneer Web TV network — part of the 20+ active sites maintained day to day.",
+        "order": 1
+      }
+    ],
     "journal": [
       {
         "id": "j1",
@@ -421,8 +493,8 @@
     "tagline": "A custom animated radio player — placeholder channels for the studio servers while they spin up.",
     "visualizer": {
       "style": "wave",
-      "color": "#2ef2c8",
-      "color2": "#2b7fff",
+      "color": "#31e0a1",
+      "color2": "#6c8cff",
       "bars": 64,
       "smoothing": 0.82
     },
@@ -432,7 +504,7 @@
         "name": "Server 01 · Aurora",
         "url": "https://ice2.somafm.com/groovesalad-128-mp3",
         "genre": "Downtempo",
-        "color": "#2ef2c8",
+        "color": "#31e0a1",
         "enabled": true
       },
       {
@@ -440,7 +512,7 @@
         "name": "Server 02 · Monsoon",
         "url": "https://ice2.somafm.com/dronezone-128-mp3",
         "genre": "Ambient",
-        "color": "#2b7fff",
+        "color": "#6c8cff",
         "enabled": true
       },
       {
@@ -465,14 +537,14 @@
     }
   ],
   "contact": {
-    "title": "Let’s make something wild",
-    "body": "Commissions, collaborations or just a good idea — the studio inbox is open.",
+    "title": "Let’s work together",
+    "body": "Open to full-stack development, systems engineering and multimedia production work — the inbox is always open.",
     "showForm": true,
     "formNote": "Or email directly.",
-    "locationLine": "Colombo, Sri Lanka"
+    "locationLine": "Dehiwala, Sri Lanka"
   },
   "footer": {
-    "text": "© {year} DK. All rights reserved.",
-    "credit": "Designed & built in the jungle."
+    "text": "© {year} Devnith Koralage. All rights reserved.",
+    "credit": "Turning ideas into reality."
   }
 }
