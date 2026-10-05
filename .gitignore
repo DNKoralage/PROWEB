@@ -1,1 +1,3 @@
 /proweb-deploy.zip
+# Server-only DB credentials — never commit the real password.
+/api/config.local.php

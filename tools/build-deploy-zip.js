@@ -38,6 +38,9 @@ const ENTRIES = [
   'uploads/og.svg',
   'uploads/Devnith_Koralage_Professional_CV.pdf',
   'api/upload.php',
+  'api/db.php',
+  'api/health.php',
+  'api/config.sample.php',
   'firestore.rules'
 ];
 
