@@ -190,8 +190,72 @@
    * Text input for an image/media path plus an Upload button.
    * @param {object} o field options (path, label, hint, accept)
    */
+  // Dashboard media cap: 50 MB per file (api/upload.php enforces it too).
+  var DK_UPLOAD_LIMIT = 50 * 1024 * 1024;
+  var DK_UPLOAD_BATCH = 20;
+
+  function fmtSize(bytes) {
+    if (bytes === 0) return '0 B';
+    if (!bytes) return '';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(bytes >= 10485760 ? 0 : 1) + ' MB';
+    if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB';
+    return bytes + ' B';
+  }
+
+  /** XHR single upload with progress (fraction 0..1). */
+  function uploadOne(file, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', DK.basePath() + 'api/upload.php', true);
+      xhr.setRequestHeader('X-DK-Token', gate());
+      if (xhr.upload && onProgress) {
+        xhr.upload.addEventListener('progress', function (e) {
+          if (e.lengthComputable) onProgress(e.loaded / e.total);
+        });
+      }
+      xhr.onload = function () {
+        var body = null;
+        try { body = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
+        if (xhr.status >= 200 && xhr.status < 300 && body && body.ok && body.path) resolve(body.path);
+        else reject(new Error((body && body.error) || ('Upload failed (HTTP ' + xhr.status + ').')));
+      };
+      xhr.onerror = function () { reject(new Error('Network error during upload.')); };
+      var fd = new FormData();
+      fd.append('file', file, file.name);
+      xhr.send(fd);
+    });
+  }
+
+  /** POST a files[] batch; resolves { files:[], errors:[] }. */
+  function uploadBatch(files, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', DK.basePath() + 'api/upload.php', true);
+      xhr.setRequestHeader('X-DK-Token', gate());
+      if (xhr.upload && onProgress) {
+        xhr.upload.addEventListener('progress', function (e) {
+          if (e.lengthComputable) onProgress(e.loaded / Math.max(1, e.total));
+        });
+      }
+      xhr.onload = function () {
+        var body = null;
+        try { body = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
+        if (xhr.status >= 200 && xhr.status < 300 && body && body.ok) {
+          resolve({ files: body.files || [], errors: body.errors || [] });
+        } else {
+          reject(new Error((body && body.error) || ('Batch upload failed (HTTP ' + xhr.status + ').')));
+        }
+      };
+      xhr.onerror = function () { reject(new Error('Network error during upload.')); };
+      var fd = new FormData();
+      files.forEach(function (f) { fd.append('files[]', f, f.name); });
+      xhr.send(fd);
+    });
+  }
+
   function uploadField(o, value) {
-    var wrap = DK.dom.el('div', { class: 'adm-field adm-field--upload' });
+    var multi = !!o.multi;
+    var wrap = DK.dom.el('div', { class: 'adm-field adm-field--upload' + (multi ? ' is-multi' : '') });
     wrap.appendChild(DK.dom.el('span', null, esc(o.label)));
 
     var row = DK.dom.el('div', { class: 'adm-field__row' });
@@ -199,39 +263,94 @@
     input.value = value === undefined || value === null ? '' : String(value);
     input.addEventListener('input', function () { setPath(o.path, input.value); });
 
-    var btn = DK.dom.el('button', {
-      type: 'button', class: 'adm-btn adm-btn--sm'
-    }, 'Upload');
+    // Progress bar shared by single + batch uploads.
+    var bar = DK.dom.el('div', { class: 'adm-up__bar', hidden: '' });
+    var fill = DK.dom.el('div', { class: 'adm-up__fill' });
+    bar.appendChild(fill);
+    var msg = DK.dom.el('p', { class: 'adm-up__msg' });
+
+    var btn = DK.dom.el('button', { type: 'button', class: 'adm-btn adm-btn--sm' },
+      multi ? 'Upload images' : 'Upload');
+
+    function busy(b, label, frac) {
+      btn.disabled = !!b;
+      btn.textContent = b ? (label || 'Uploading...') : (multi ? 'Upload images' : 'Upload');
+      if (b) bar.removeAttribute('hidden'); else bar.setAttribute('hidden', '');
+      fill.style.width = Math.round((frac || 0) * 100) + '%';
+      if (!b && !label) msg.textContent = '';
+      else if (label) msg.textContent = label;
+    }
+
+    function finish(paths, errs) {
+      busy(false);
+      if (paths.length && !multi) {
+        input.value = paths[0];
+        setPath(o.path, paths[0]);
+      }
+      if (paths.length && multi && typeof o.onPaths === 'function') o.onPaths(paths);
+      if (DK.sound) DK.sound.play(errs.length ? 'error' : 'success');
+      if (paths.length && !errs.length) {
+        DK.toast(multi ? ('Uploaded ' + paths.length + ' images') : ('Uploaded ' + paths[0]), 'success');
+      } else if (paths.length && errs.length) {
+        DK.toast('Uploaded ' + paths.length + ', ' + errs.length + ' failed', 'error');
+      } else if (errs.length) {
+        DK.toast(errs[0].error || 'Upload failed', 'error');
+      }
+      renderPanel();
+    }
+
+    function precheck(files) {
+      for (var q = 0; q < files.length; q++) {
+        if ((o.accept || 'image/*').indexOf('image') >= 0 && !/^image\//i.test(files[q].type || '')) {
+          return files[q].name + ' is not an image.';
+        }
+        if (files[q].size > DK_UPLOAD_LIMIT) return files[q].name + ' is over 50 MB.';
+      }
+      return '';
+    }
+
+    function send(files) {
+      files = Array.prototype.slice.call(files || []);
+      if (!files.length) return;
+      if (!multi) files = files.slice(0, 1);
+      if (files.length > DK_UPLOAD_BATCH) files = files.slice(0, DK_UPLOAD_BATCH);
+      var bad = precheck(files);
+      if (bad) { DK.toast(bad, 'error'); return; }
+      busy(true, 'Uploading 0/' + files.length, 0);
+      var paths = []; var errs = [];
+      if (files.length > 1) {
+        uploadBatch(files, function (f) { busy(true, 'Uploading...', f); }).then(function (res) {
+          (res.files || []).forEach(function (f) { paths.push(f.path); });
+          (res.errors || []).forEach(function (e) { errs.push(e); });
+          finish(paths, errs);
+        }, function (err) { busy(false); DK.toast(err.message || 'Upload failed', 'error'); });
+      } else {
+        uploadOne(files[0], function (f) { busy(true, 'Uploading...', f); }).then(function (p) {
+          finish([p], []);
+        }, function (err) { busy(false); DK.toast(err.message || 'Upload failed', 'error'); });
+      }
+    }
+
     btn.addEventListener('click', function () {
-      var picker = DK.dom.el('input', {
-        type: 'file', accept: o.accept || 'image/*'
-      });
-      picker.addEventListener('change', function () {
-        var file = picker.files && picker.files[0];
-        if (!file) return;
-        btn.disabled = true;
-        btn.textContent = 'Uploading...';
-        uploadFile(file, function (path) {
-          btn.disabled = false;
-          btn.textContent = 'Upload';
-          input.value = path;
-          setPath(o.path, path);
-          if (DK.sound) DK.sound.play('success');
-          DK.toast('Uploaded ' + path, 'success');
-          renderPanel();
-        }, function (msg) {
-          btn.disabled = false;
-          btn.textContent = 'Upload';
-          if (DK.sound) DK.sound.play('error');
-          DK.toast(msg, 'error');
-        });
-      });
+      var picker = DK.dom.el('input', { type: 'file', accept: o.accept || 'image/*' });
+      if (multi) picker.setAttribute('multiple', 'multiple');
+      picker.addEventListener('change', function () { send(picker.files); });
       picker.click();
     });
 
     row.appendChild(input);
     row.appendChild(btn);
     wrap.appendChild(row);
+    wrap.appendChild(bar);
+    wrap.appendChild(msg);
+
+    // Drag-and-drop straight onto the field.
+    wrap.addEventListener('dragover', function (e) { e.preventDefault(); wrap.classList.add('is-drop'); });
+    wrap.addEventListener('dragleave', function () { wrap.classList.remove('is-drop'); });
+    wrap.addEventListener('drop', function (e) {
+      e.preventDefault(); wrap.classList.remove('is-drop');
+      if (e.dataTransfer && e.dataTransfer.files) send(e.dataTransfer.files);
+    });
     if (o.hint) wrap.appendChild(DK.dom.el('small', { class: 'adm-field__note' }, esc(o.hint)));
     return wrap;
   }
@@ -420,7 +539,12 @@
       if (isOpen) {
         var body = DK.dom.el('div', { class: 'adm-item__body' });
         (o.schema || []).forEach(function (f) {
-          if (f.list) {
+          if (f.gallery) {
+            body.appendChild(galleryEditor({
+              path: base + '.' + f.gallery, label: f.label,
+              uploadLabel: 'Add to ' + f.label
+            }));
+          } else if (f.list) {
             body.appendChild(subList({
               path: base + '.' + f.key, label: f.label,
               schema: f.list.schema, makeNew: f.list.makeNew
@@ -440,6 +564,112 @@
 
     c.appendChild(wrap);
     return c;
+  }
+
+  /**
+   * Reorderable gallery editor: drag-and-drop thumbnails (HTML5 DnD +
+   * keyboard arrows), per-image remove, and a bulk upload dropzone.
+   * Items are { src, caption, order }; onChange fires with the new order.
+   */
+  function galleryEditor(o) {
+    var wrap = DK.dom.el('div', { class: 'adm-gallery' });
+    wrap.appendChild(DK.dom.el('span', { class: 'adm-field__note' }, esc(o.label || 'Images')));
+
+    var items = getPath(o.path);
+    if (!Array.isArray(items)) items = [];
+
+    var strip = DK.dom.el('div', { class: 'adm-order', role: 'list', 'aria-label': 'Image order' });
+    var dragFrom = -1;
+
+    function commit() {
+      items.forEach(function (it, n) { if (it) it.order = n + 1; });
+      setPath(o.path, items);
+      paint();
+    }
+
+    function paint() {
+      strip.innerHTML = '';
+      if (!items.length) {
+        strip.appendChild(DK.dom.el('p', { class: 'adm-order__empty' }, 'No images yet - upload below.'));
+        return;
+      }
+      items.forEach(function (it, n) {
+        var tile = DK.dom.el('div', { class: 'adm-order__tile', role: 'listitem', tabindex: '0',
+          draggable: 'true', 'aria-label': 'Image ' + (n + 1) + ' of ' + items.length });
+        var src = DK.mediaSrc(DK.safeMedia(it && it.src));
+        if (src) tile.appendChild(DK.dom.el('img', { src: src, alt: (it && it.caption) || ('Image ' + (n + 1)) }));
+        tile.appendChild(DK.dom.el('span', { class: 'adm-order__num' }, String(n + 1)));
+        var rm = DK.dom.el('button', { type: 'button', class: 'adm-order__rm', 'aria-label': 'Remove' }, 'x');
+        rm.addEventListener('click', function (e) {
+          e.stopPropagation();
+          items.splice(n, 1);
+          commit();
+          if (DK.sound) DK.sound.play('error');
+        });
+        tile.appendChild(rm);
+        tile.addEventListener('dragstart', function (e) {
+          dragFrom = n;
+          tile.classList.add('is-drag');
+          try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(n)); } catch (x) {}
+        });
+        tile.addEventListener('dragend', function () { tile.classList.remove('is-drag'); dragFrom = -1; });
+        tile.addEventListener('dragover', function (e) { e.preventDefault(); tile.classList.add('is-over'); });
+        tile.addEventListener('dragleave', function () { tile.classList.remove('is-over'); });
+        tile.addEventListener('drop', function (e) {
+          e.preventDefault(); tile.classList.remove('is-over');
+          var from = dragFrom >= 0 ? dragFrom : parseInt((e.dataTransfer.getData('text/plain') || '-1'), 10);
+          if (from >= 0 && from < items.length && from !== n) {
+            var mv = items.splice(from, 1)[0];
+            items.splice(n, 0, mv);
+            commit();
+            if (DK.sound) DK.sound.play('toggleOn');
+          }
+          dragFrom = -1;
+        });
+        tile.addEventListener('keydown', function (e) {
+          var j = -1;
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') j = n - 1;
+          else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') j = n + 1;
+          else if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault(); items.splice(n, 1); commit(); return;
+          } else return;
+          e.preventDefault();
+          if (j < 0 || j >= items.length) return;
+          var mv = items.splice(n, 1)[0];
+          items.splice(j, 0, mv);
+          commit();
+        });
+        strip.appendChild(tile);
+      });
+    }
+
+    paint();
+    wrap.appendChild(strip);
+
+    // Bulk upload straight into this gallery.
+    var up = uploadField({
+      path: o.path + '.__bulk', label: (o.uploadLabel || 'Add images'), hint: 'Select many or drop files - 50 MB each.',
+      accept: 'image/*', multi: true,
+      onPaths: function (paths) {
+        paths.forEach(function (p, k) {
+          items.push({ id: uid('im'), src: p, caption: '', order: items.length + 1 + k });
+        });
+        commit();
+      }
+    });
+    // The bulk row has no text path to edit; hide its text input.
+    var junk = up.querySelector('input[type=text]');
+    if (junk && junk.parentNode) junk.parentNode.removeChild(junk);
+    var lbl = up.querySelector(':scope > span');
+    if (lbl && lbl.parentNode) lbl.parentNode.removeChild(lbl);
+    wrap.appendChild(up);
+
+    // Caption editing for each image.
+    items.forEach(function (it, n) {
+      wrap.appendChild(field({ path: o.path + '.' + n + '.caption', label: 'Caption ' + (n + 1) }));
+    });
+
+    return wrap;
   }
 
   /** Nested sub-list (photos, images) shown inside an open item. */
@@ -506,7 +736,7 @@
     if (kind === 'nav') return { id: newId('nav'), label: 'New link', href: '#top', visible: true };
     if (kind === 'pages') return { id: newId('pg'), title: 'New page', slug: 'new-page', body: '', published: false, inNav: false, order: 0 };
     if (kind === 'stats') return { id: newId('s'), value: '0', label: 'New stat' };
-    if (kind === 'stations') return { id: newId('r'), name: 'New server', url: '', genre: 'Ambient', color: '#31e0a1', enabled: true };
+    if (kind === 'stations') return { id: newId('r'), logo: '', name: 'New server', showTitle: '', showSubtitle: '', url: '', genre: 'Ambient', color: '#31e0a1', enabled: true };
     if (kind === 'photo') return { id: newId('ph'), src: '', caption: '', order: 0 };
     return { id: newId('x') };
   }
@@ -527,7 +757,7 @@
       { key: 'tags', label: 'Tags (comma separated)', type: 'csv' },
       { key: 'featured', label: 'Featured', type: 'check' },
       { key: 'body', label: 'Case study body', type: 'textarea', rows: 6 },
-      { key: 'images', label: 'Project images', list: { schema: IMG_SUB.schema, makeNew: function () { return makeNew('photo'); } } }
+      { key: 'images', label: 'Project images', gallery: 'images', list: { schema: IMG_SUB.schema, makeNew: function () { return makeNew('photo'); } } }
     ],
     photography: [
       { key: 'title', label: 'Album title' }, { key: 'category', label: 'Category' },
@@ -535,7 +765,7 @@
       { key: 'description', label: 'Description', type: 'textarea', rows: 3 },
       { key: 'date', label: 'Date', hint: 'YYYY-MM-DD' },
       { key: 'location', label: 'Location' },
-      { key: 'photos', label: 'Photos (max 200)', list: { schema: IMG_SUB.schema, makeNew: function () { return makeNew('photo'); } } }
+      { key: 'photos', label: 'Photos (max 200)', gallery: 'photos', list: { schema: IMG_SUB.schema, makeNew: function () { return makeNew('photo'); } } }
     ],
     videography: [
       { key: 'title', label: 'Title' }, { key: 'category', label: 'Category' },
@@ -585,7 +815,10 @@
       { key: 'value', label: 'Value' }, { key: 'label', label: 'Label' }
     ],
     stations: [
+      { key: 'logo', label: 'Station logo / artwork', type: 'image' },
       { key: 'name', label: 'Server / station name' },
+      { key: 'showTitle', label: 'Current song / show title' },
+      { key: 'showSubtitle', label: 'Subtitle / artist' },
       { key: 'url', label: 'Stream URL', type: 'url' },
       { key: 'genre', label: 'Genre' },
       { key: 'color', label: 'Colour', type: 'color' },
@@ -848,31 +1081,53 @@
   };
 
   renderers.servers = function () {
-    var head = card('My Servers', 'Animated radio player — placeholder nodes');
+    var head = card('My Servers', 'Neon radio player - artwork, glow and wave are editable below');
     head.appendChild(fields([
       { path: 'radio.title', label: 'Section title' },
       { path: 'radio.tagline', label: 'Tagline', type: 'textarea', rows: 2 },
+      { path: 'radio.artwork', label: 'Default station logo / artwork', type: 'image',
+        hint: 'Shown in the circular player window. Each station can override it.' },
       { path: 'settings.radio.blockedHint', label: 'Blocked hint' },
       { path: 'settings.radio.defaultStation', label: 'Default station id' }
     ], true));
 
-    var viz = card('Wave visualizer');
+    var now = card('Now playing', 'Editable station info shown on the live player');
+    now.appendChild(fields([
+      { path: 'radio.nowPlaying.station', label: 'Station name override' },
+      { path: 'radio.nowPlaying.track', label: 'Current song / show title' },
+      { path: 'radio.nowPlaying.artist', label: 'Subtitle / artist' }
+    ]));
+
+    var neon = card('Neon glow', 'Circular logo ring + ambient glow');
+    neon.appendChild(fields([
+      { path: 'radio.neon.enabled', label: 'Neon glow enabled', type: 'check' },
+      { path: 'radio.neon.color', label: 'Glow colour 1', type: 'color' },
+      { path: 'radio.neon.color2', label: 'Glow colour 2', type: 'color' },
+      { path: 'radio.neon.speed', label: 'Animation speed 0-3', type: 'number', min: 0, max: 3 }
+    ]));
+
+    var viz = card('Wave visualizer', 'Fluid multi-colour neon wave below the logo');
     viz.appendChild(fields([
-      { path: 'radio.visualizer.style', label: 'Style', type: 'select', options: ['wave', 'bars', 'ribbon', 'orbit'] },
-      { path: 'radio.visualizer.color', label: 'Colour 1', type: 'color' },
-      { path: 'radio.visualizer.color2', label: 'Colour 2', type: 'color' },
+      { path: 'radio.visualizer.style', label: 'Style', type: 'select',
+        options: ['neon', 'wave', 'bars', 'ribbon', 'orbit'] },
+      { path: 'radio.visualizer.color', label: 'Wave colour 1', type: 'color' },
+      { path: 'radio.visualizer.color2', label: 'Wave colour 2', type: 'color' },
+      { path: 'radio.visualizer.color3', label: 'Wave colour 3', type: 'color' },
+      { path: 'radio.visualizer.glow', label: 'Wave glow', type: 'check' },
+      { path: 'radio.visualizer.glowColor', label: 'Wave glow colour', type: 'color' },
+      { path: 'radio.visualizer.speed', label: 'Animation speed 0-3', type: 'number', min: 0, max: 3 },
       { path: 'radio.visualizer.bars', label: 'Resolution', type: 'number', min: 16, max: 256 },
-      { path: 'radio.visualizer.smoothing', label: 'Smoothing 0–1', type: 'number', min: 0, max: 1 }
+      { path: 'radio.visualizer.smoothing', label: 'Smoothing 0-1', type: 'number', min: 0, max: 1 }
     ]));
 
     var stations = listEditor({
       path: 'radio.stations', title: 'Server nodes',
-      hint: 'Each node powers the player; placeholder streams run until real servers come online.',
+      hint: 'Each node powers the player: logo, stream URL, titles and accent colour.',
       schema: SCHEMAS.stations, addLabel: 'Add server',
       makeNew: function () { return makeNew('stations'); }, nameKey: 'name'
     });
 
-    return [head, viz, stations];
+    return [head, now, neon, viz, stations];
   };
 
   renderers.footer = function () {

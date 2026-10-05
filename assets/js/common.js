@@ -358,11 +358,14 @@
       radio: {
         title: 'My Servers',
         tagline: 'A custom animated radio player — placeholder channels for the studio servers while they spin up.',
-        visualizer: { style: 'wave', color: '#31e0a1', color2: '#6c8cff', bars: 64, smoothing: 0.82 },
+        visualizer: { style: 'neon', color: '#31e0a1', color2: '#7b5cff', color3: '#ff5ce1',
+          bars: 96, smoothing: 0.82, glow: true, glowColor: '#31e0a1', speed: 1 },
+        artwork: '', neon: { enabled: true, color: '#31e0a1', color2: '#7b5cff', speed: 1.2 },
+        nowPlaying: { station: '', track: '', artist: '' },
         stations: [
-          { id: 'r1', name: 'Server 01 · Aurora', url: 'https://ice2.somafm.com/groovesalad-128-mp3', genre: 'Downtempo', color: '#31e0a1', enabled: true },
-          { id: 'r2', name: 'Server 02 · Monsoon', url: 'https://ice2.somafm.com/dronezone-128-mp3', genre: 'Ambient', color: '#6c8cff', enabled: true },
-          { id: 'r3', name: 'Server 03 · Firefly', url: 'https://ice2.somafm.com/deepspaceone-128-mp3', genre: 'Atmospheric', color: '#7b5cff', enabled: true }
+          { id: 'r1', logo: '', showTitle: '', showSubtitle: '', name: 'Server 01 · Aurora', url: 'https://ice2.somafm.com/groovesalad-128-mp3', genre: 'Downtempo', color: '#31e0a1', enabled: true },
+          { id: 'r2', logo: '', showTitle: '', showSubtitle: '', name: 'Server 02 · Monsoon', url: 'https://ice2.somafm.com/dronezone-128-mp3', genre: 'Ambient', color: '#6c8cff', enabled: true },
+          { id: 'r3', logo: '', showTitle: '', showSubtitle: '', name: 'Server 03 · Firefly', url: 'https://ice2.somafm.com/deepspaceone-128-mp3', genre: 'Atmospheric', color: '#7b5cff', enabled: true }
         ]
       },
       pages: [
@@ -442,6 +445,13 @@
 
     // Radio stations need stable unique ids.
     var seen = {};
+    if (!out.radio.visualizer) out.radio.visualizer = {};
+    if (!out.radio.visualizer.style) out.radio.visualizer.style = 'neon';
+    if (typeof out.radio.visualizer.glow !== 'boolean') out.radio.visualizer.glow = true;
+    if (!out.radio.artwork) out.radio.artwork = ((out.radio.stations[0] || {}).logo || '');
+    if (!out.radio.neon) out.radio.neon = {};
+    if (typeof out.radio.neon.enabled !== 'boolean') out.radio.neon.enabled = true;
+    if (!out.radio.nowPlaying) out.radio.nowPlaying = { station: '', track: '', artist: '' };
     out.radio.stations.forEach(function (st, i) {
       if (!st.id || seen[st.id]) st.id = DK.uid('st');
       seen[st.id] = true;

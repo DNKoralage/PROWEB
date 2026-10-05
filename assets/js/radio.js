@@ -14,6 +14,17 @@
    * Render the radio section markup.
    * @param {object} cfg { radio, site }
    */
+  function neonVars(radio) {
+    var vis = radio.visualizer || {};
+    var neon = radio.neon || {};
+    var c1 = neon.color || vis.color || '#31e0a1';
+    var c2 = neon.color2 || vis.color2 || '#7b5cff';
+    var c3 = vis.color3 || '#ff5ce1';
+    return { c1: c1, c2: c2, c3: c3,
+      wc: vis.glowColor || c1, speed: Number(vis.speed) || 1,
+      nspeed: Number(neon.speed) || 1.2, glow: vis.glow !== false, neon: neon.enabled !== false };
+  }
+
   function markup(cfg) {
     var radio = cfg.radio || {};
     var cfgVis = radio.visualizer || {};
@@ -46,17 +57,42 @@
 
     var body = DK.dom.el('div', { class: 'dk-radio__body' });
 
-    // ---- deck (visualizer + transport) ----
-    var deck = DK.dom.el('div', { class: 'dk-radio__deck' });
+    // ---- neon deck: circular artwork, wave visualizer, transport ----
+    var deck = DK.dom.el('div', { class: 'dk-radio__deck dk-radio__deck--neon' });
+    var pal = neonVars(radio);
+    deck.style.setProperty('--dk-neon-1', pal.c1);
+    deck.style.setProperty('--dk-neon-2', pal.c2);
+    deck.style.setProperty('--dk-neon-3', pal.c3);
+    deck.style.setProperty('--dk-wave-glow', pal.wc);
+    deck.style.setProperty('--dk-neon-speed', String(pal.nspeed) + 's');
+    deck.style.setProperty('--dk-wave-speed', String(pal.speed) + 's');
+    if (!pal.neon) deck.classList.add('is-no-neon');
+    if (!pal.glow) deck.classList.add('is-no-waveglow');
 
-    var canvasWrap = DK.dom.el('div', { class: 'dk-radio__viz' });
-    var canvas = DK.dom.el('canvas', { class: 'dk-radio__canvas', 'aria-hidden': 'true' });
-    canvasWrap.appendChild(canvas);
-
+    var artSrc = DK.mediaSrc(DK.safeMedia(radio.artwork || (stations[0] && stations[0].logo) || ''));
+    var art = DK.dom.el('div', { class: 'dk-radio__art' });
+    var ring = DK.dom.el('div', { class: 'dk-radio__ring', 'aria-hidden': 'true' });
+    art.appendChild(ring);
+    var disc;
+    if (artSrc) {
+      disc = DK.dom.el('img', { class: 'dk-radio__disc', src: artSrc,
+        alt: 'Station artwork for ' + (stations[0].name || 'radio') });
+    } else {
+      disc = DK.dom.el('div', { class: 'dk-radio__disc dk-radio__disc--ph', 'aria-hidden': 'true' });
+      disc.innerHTML = '<span>ON AIR</span>';
+    }
+    art.appendChild(disc);
     var badge = DK.dom.el('div', { class: 'dk-radio__badge' });
     badge.appendChild(DK.dom.el('span', { class: 'dk-radio__badge-pulse', 'aria-hidden': 'true' }));
     badge.appendChild(DK.dom.el('span', { class: 'dk-radio__badge-text' }, 'Live'));
-    canvasWrap.appendChild(badge);
+    art.appendChild(badge);
+    deck.appendChild(art);
+
+    var np = radio.nowPlaying || {};
+    var st0 = stations[0] || {};
+    var canvasWrap = DK.dom.el('div', { class: 'dk-radio__viz' });
+    var canvas = DK.dom.el('canvas', { class: 'dk-radio__canvas', 'aria-hidden': 'true' });
+    canvasWrap.appendChild(canvas);
     deck.appendChild(canvasWrap);
 
     var transport = DK.dom.el('div', { class: 'dk-radio__transport' });
@@ -70,10 +106,15 @@
     transport.appendChild(playBtn);
 
     var meta = DK.dom.el('div', { class: 'dk-radio__meta' });
-    var nowName = DK.dom.el('span', { class: 'dk-radio__now-name' }, esc(stations[0].name));
-    var nowGenre = DK.dom.el('span', { class: 'dk-radio__now-genre' }, esc(stations[0].genre || ''));
+    var nowName = DK.dom.el('span', { class: 'dk-radio__now-name' },
+      esc(np.station || st0.name || ''));
+    var nowTrack = DK.dom.el('span', { class: 'dk-radio__now-track' },
+      esc(np.track || st0.showTitle || ''));
+    var nowGenre = DK.dom.el('span', { class: 'dk-radio__now-genre' },
+      esc(np.artist || st0.showSubtitle || st0.genre || ''));
     meta.appendChild(DK.dom.el('span', { class: 'dk-radio__now-label' }, 'Now playing'));
     meta.appendChild(nowName);
+    if (np.track || st0.showTitle) meta.appendChild(nowTrack);
     meta.appendChild(nowGenre);
     transport.appendChild(meta);
 
@@ -94,6 +135,13 @@
     deck.appendChild(transport);
     body.appendChild(deck);
 
+    // stash (legacy: keep canvasWrap refs for controller below)
+    var refs0 = { stations: stations, canvas: canvas, playBtn: playBtn,
+                    nowName: nowName, nowTrack: nowTrack, nowGenre: nowGenre,
+                    artImg: (disc && disc.tagName === 'IMG') ? disc : null,
+                    status: status, volume: vol, list: null, vis: cfgVis,
+                    neon: pal, nowPlaying: np };
+
     // ---- station list ----
     var list = DK.dom.el('ul', { class: 'dk-radio__list' });
     stations.forEach(function (st, i) {
@@ -105,22 +153,29 @@
         'data-cursor': 'label',
         'data-cursor-label': 'Play'
       });
-      var dot = DK.dom.el('span', { class: 'dk-radio__station-dot', 'aria-hidden': 'true' });
-      dot.style.background = st.color || 'var(--dk-accent)';
-      btn.appendChild(dot);
-      btn.appendChild(DK.dom.el('span', { class: 'dk-radio__station-name' }, esc(st.name)));
-      btn.appendChild(DK.dom.el('span', { class: 'dk-radio__station-genre' }, esc(st.genre || '')));
+      var thumbSrc = DK.mediaSrc(DK.safeMedia(st.logo || ''));
+      if (thumbSrc) {
+        btn.appendChild(DK.dom.el('img', { class: 'dk-radio__station-thumb', src: thumbSrc,
+          alt: '', loading: 'lazy' }));
+      } else {
+        var dot = DK.dom.el('span', { class: 'dk-radio__station-dot', 'aria-hidden': 'true' });
+        dot.style.background = st.color || 'var(--dk-accent)';
+        btn.appendChild(dot);
+      }
+      var txt = DK.dom.el('span', { class: 'dk-radio__station-txt' });
+      txt.appendChild(DK.dom.el('span', { class: 'dk-radio__station-name' }, esc(st.name)));
+      var sub = st.showTitle || st.showSubtitle || st.genre || '';
+      if (sub) txt.appendChild(DK.dom.el('span', { class: 'dk-radio__station-genre' }, esc(sub)));
+      btn.appendChild(txt);
       li.appendChild(btn);
       list.appendChild(li);
     });
     body.appendChild(list);
+    refs0.list = list;
     inner.appendChild(body);
     wrap.appendChild(inner);
-
     // stash references for the controller
-    wrap._radio = { stations: stations, canvas: canvas, playBtn: playBtn,
-                    nowName: nowName, nowGenre: nowGenre, status: status,
-                    volume: vol, list: list, vis: cfgVis };
+    wrap._radio = refs0;
     return wrap;
   }
 /* ------------------------------------------------------------- visualizer */
