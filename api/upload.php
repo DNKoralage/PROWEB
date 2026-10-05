@@ -26,7 +26,12 @@
 
 declare(strict_types=1);
 
-// Same FNV-1a gate as assets/js/admin.js: fnv('dk|' + PASSCODE + '|studio').
+// Token: FNV-1a variant, MUST match fnv() in assets/js/admin.js.
+// gate = fnv('dk|' + PASSCODE + '|studio'); default PASSCODE 'dk-admin'.
+// The constant is derived, never invented: changing PASSCODE in admin.js
+// requires recomputing this (see tools/token-check.js), otherwise every
+// upload fails with 403 "Upload token rejected".
+define('DK_UPLOAD_TOKEN', '6e067bbb');
 define('DK_UPLOAD_TOKEN', '017cfc8b');
 define('DK_MAX_BYTES', 50 * 1024 * 1024); // 50 MB per file
 define('DK_MAX_BATCH', 20); // max files per batch request
@@ -57,6 +62,17 @@ function dk_php_err(int $n): string {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') dk_fail(405, 'POST only.', 'METHOD');
 
 $token = $_SERVER['HTTP_X_DK_TOKEN'] ?? '';
+if ($token === '' && function_exists('getallheaders')) {
+  // Some proxies/CDNs normalise custom header names; fall back to a
+  // case-insensitive scan before rejecting.
+  $hs = getallheaders();
+  if (is_array($hs)) {
+    foreach ($hs as $k => $v) {
+      if (strtolower((string)$k) === 'x-dk-token') { $token = (string)$v; break; }
+    }
+  }
+}
+$token = strtolower(trim($token));
 if (!hash_equals(DK_UPLOAD_TOKEN, $token)) dk_fail(403, 'Upload token rejected.', 'AUTH');
 
 // Extension + MIME whitelist.
