@@ -1,0 +1,478 @@
+{
+  "version": 1,
+  "site": {
+    "name": "DK",
+    "fullName": "Devnith Koralage",
+    "tagline": "Devnith Koralage Creative Studio",
+    "description": "Multidisciplinary creative portfolio — logos, graphic design campaigns, photography and film.",
+    "accent": "#2ef2c8",
+    "accent2": "#2b7fff",
+    "contactEmail": "hello@dk.studio",
+    "phone": "",
+    "location": "Colombo, Sri Lanka",
+    "availability": "Available for commissions",
+    "social": {
+      "instagram": "https://instagram.com/",
+      "behance": "https://behance.net/",
+      "dribbble": "https://dribbble.com/",
+      "youtube": "https://youtube.com/",
+      "vimeo": "",
+      "linkedin": ""
+    },
+    "footerNote": "Crafted in the jungle."
+  },
+  "settings": {
+    "preloader": {
+      "enabled": true,
+      "duration": 6500,
+      "showPercent": true,
+      "skipButton": true,
+      "tagline": "Creative Studio"
+    },
+    "sounds": {
+      "enabled": true,
+      "hover": true,
+      "click": true,
+      "volume": 0.35
+    },
+    "cursor": {
+      "enabled": true
+    },
+    "hero": {
+      "parallax": true,
+      "scrollHint": true,
+      "ctaText": "Explore the work",
+      "ctaHref": "#work"
+    },
+    "radio": {
+      "defaultStation": "",
+      "blockedHint": "Press play to start the node"
+    },
+    "footer": {
+      "showSocial": true
+    }
+  },
+  "branding": {
+    "navLogo": {
+      "src": "",
+      "height": 42,
+      "position": "left",
+      "link": "#top",
+      "alt": "DK logo"
+    },
+    "siteLogo": {
+      "src": "",
+      "height": 150,
+      "showInHero": true,
+      "showInFooter": true,
+      "alt": "DK"
+    },
+    "favicon": "",
+    "loaderMark": "Devnith Koralage"
+  },
+  "nav": [
+    {
+      "id": "nav-1",
+      "label": "Work",
+      "href": "#work",
+      "visible": true,
+      "order": 0
+    },
+    {
+      "id": "nav-2",
+      "label": "Logos",
+      "href": "#logos",
+      "visible": true,
+      "order": 1
+    },
+    {
+      "id": "nav-3",
+      "label": "Albums",
+      "href": "#photography",
+      "visible": true,
+      "order": 2
+    },
+    {
+      "id": "nav-4",
+      "label": "Film",
+      "href": "#videography",
+      "visible": true,
+      "order": 3
+    },
+    {
+      "id": "nav-5",
+      "label": "Servers",
+      "href": "#radio",
+      "visible": true,
+      "order": 4
+    },
+    {
+      "id": "nav-6",
+      "label": "Contact",
+      "href": "#contact",
+      "visible": true,
+      "order": 5
+    }
+  ],
+  "hero": {
+    "eyebrow": "Design · photography · film",
+    "title": "Devnith Koralage",
+    "titleAccent": "Creative Studio",
+    "subtitle": "Logos, campaigns, photography and film — built in deep jungle greens with electric light.",
+    "image": "",
+    "ctaText": "Explore the work",
+    "ctaHref": "#work",
+    "secondaryText": "Tune in",
+    "secondaryHref": "#radio",
+    "stats": [
+      {
+        "id": "s1",
+        "value": "120+",
+        "label": "Projects delivered"
+      },
+      {
+        "id": "s2",
+        "value": "9",
+        "label": "Years in the field"
+      },
+      {
+        "id": "s3",
+        "value": "34",
+        "label": "Campaigns"
+      }
+    ]
+  },
+  "about": {
+    "title": "The studio",
+    "body": "A multidisciplinary practice working across identity, print, photography and motion. Every project starts the same way: listen to the terrain, then build something that can survive it.",
+    "image": "",
+    "skills": [
+      "Brand identity",
+      "Art direction",
+      "Graphic design",
+      "Photography",
+      "Motion & film",
+      "Sound design"
+    ],
+    "clients": "Northwind Coffee, Johnian School Walk, Verde Market, Kestrel Studio, Halo Records"
+  },
+  "sections": {
+    "logos": {
+      "enabled": true,
+      "title": "Logos portfolio",
+      "kicker": "Identity",
+      "blurb": "Marks built to survive small sizes and big walls.",
+      "limit": 24
+    },
+    "graphics": {
+      "enabled": true,
+      "title": "Graphic design projects",
+      "kicker": "Campaigns",
+      "blurb": "Print, social and out-of-home systems.",
+      "featured": "g1"
+    },
+    "photography": {
+      "enabled": true,
+      "title": "Photography albums",
+      "kicker": "Albums",
+      "blurb": "Up to 200 frames per album.",
+      "perPage": 24,
+      "layout": "masonry"
+    },
+    "videography": {
+      "enabled": true,
+      "title": "Videography",
+      "kicker": "Film",
+      "blurb": "Direct uploads or hosted links."
+    },
+    "journal": {
+      "enabled": true,
+      "title": "Journal",
+      "kicker": "Notes",
+      "blurb": "Occasional writing from the field."
+    },
+    "radio": {
+      "enabled": true,
+      "title": "My Servers",
+      "kicker": "Live nodes",
+      "blurb": "Placeholder nodes streaming live while the studio servers come online."
+    }
+  },
+  "categories": {
+    "logos": [
+      "Monogram",
+      "Wordmark",
+      "Emblem",
+      "Lettering"
+    ],
+    "graphics": [
+      "Campaign",
+      "Poster",
+      "Brand system",
+      "Social",
+      "Packaging",
+      "Editorial"
+    ],
+    "photography": [
+      "Wildlife",
+      "Portraits",
+      "Street",
+      "Nature",
+      "Travel"
+    ],
+    "videography": [
+      "Documentary",
+      "Commercial",
+      "Motion",
+      "Short film"
+    ]
+  },
+  "collections": {
+    "logos": [
+      {
+        "id": "l1",
+        "title": "Verde Market",
+        "client": "Verde Market",
+        "category": "Emblem",
+        "year": "2024",
+        "image": "",
+        "alt": "Verde Market logo",
+        "description": "Leaf-built emblem for an organic grocer.",
+        "tags": [
+          "identity"
+        ],
+        "featured": true,
+        "order": 1
+      },
+      {
+        "id": "l2",
+        "title": "Kestrel Studio",
+        "client": "Kestrel Studio",
+        "category": "Monogram",
+        "year": "2024",
+        "image": "",
+        "alt": "Kestrel Studio logo",
+        "description": "Monogram for an architecture practice.",
+        "tags": [
+          "identity"
+        ],
+        "featured": false,
+        "order": 2
+      },
+      {
+        "id": "l3",
+        "title": "Halo Records",
+        "client": "Halo Records",
+        "category": "Wordmark",
+        "year": "2023",
+        "image": "",
+        "alt": "Halo Records logo",
+        "description": "Wordmark for an independent label.",
+        "tags": [
+          "identity"
+        ],
+        "featured": false,
+        "order": 3
+      },
+      {
+        "id": "l4",
+        "title": "Fern & Co",
+        "client": "Fern & Co",
+        "category": "Lettering",
+        "year": "2023",
+        "image": "",
+        "alt": "Fern & Co logo",
+        "description": "Hand-lettered botanical wordmark.",
+        "tags": [
+          "identity"
+        ],
+        "featured": false,
+        "order": 4
+      }
+    ],
+    "graphics": [
+      {
+        "id": "g1",
+        "title": "Johnian School Walk",
+        "client": "Johnian Schools",
+        "category": "Campaign",
+        "year": "2025",
+        "description": "End-to-end campaign for the annual school walk: identity, route signage, print, social and stage graphics.",
+        "tags": [
+          "campaign",
+          "print",
+          "social"
+        ],
+        "featured": true,
+        "order": 1,
+        "images": [
+          {
+            "id": "gi1",
+            "src": "",
+            "caption": "Campaign key visual",
+            "order": 0
+          },
+          {
+            "id": "gi2",
+            "src": "",
+            "caption": "Poster series",
+            "order": 1
+          },
+          {
+            "id": "gi3",
+            "src": "",
+            "caption": "Social templates",
+            "order": 2
+          },
+          {
+            "id": "gi4",
+            "src": "",
+            "caption": "Route signage",
+            "order": 3
+          }
+        ],
+        "body": "A walking event needed a visual system that could hold up on a banner, a handbill and a phone screen.\n\nThe palette pulls from monsoon greens with a single electric highlight reserved for calls to action, so the wayfinding stays legible in print and on screen."
+      },
+      {
+        "id": "g2",
+        "title": "Monsoon Coffee",
+        "client": "Northwind Coffee",
+        "category": "Brand system",
+        "year": "2024",
+        "description": "Packaging and brand system for a single-origin roaster.",
+        "tags": [
+          "packaging",
+          "brand"
+        ],
+        "featured": false,
+        "order": 2,
+        "images": [
+          {
+            "id": "gi5",
+            "src": "",
+            "caption": "Packaging range",
+            "order": 0
+          },
+          {
+            "id": "gi6",
+            "src": "",
+            "caption": "Brand guidelines",
+            "order": 1
+          }
+        ],
+        "body": "A quiet, botanical identity built around hand-printed illustration and a deep green ground."
+      }
+    ],
+    "photography": [
+      {
+        "id": "p1",
+        "title": "Jungle mornings",
+        "category": "Nature",
+        "cover": "",
+        "description": "Mist, light and leaf litter.",
+        "date": "2025-03-14",
+        "location": "Sinharaja, Sri Lanka",
+        "order": 1,
+        "photos": []
+      },
+      {
+        "id": "p2",
+        "title": "Street greens",
+        "category": "Street",
+        "cover": "",
+        "description": "Plants and people in the city.",
+        "date": "2024-11-02",
+        "location": "Colombo, Sri Lanka",
+        "order": 2,
+        "photos": []
+      }
+    ],
+    "videography": [
+      {
+        "id": "v1",
+        "title": "Rainforest Sessions",
+        "category": "Documentary",
+        "type": "link",
+        "url": "",
+        "poster": "",
+        "description": "A short documentary about life in the jungle.",
+        "duration": "08:24",
+        "order": 1
+      }
+    ],
+    "journal": [
+      {
+        "id": "j1",
+        "title": "Notes on a green palette",
+        "date": "2025-05-02",
+        "excerpt": "Why jungle greens read better at low luminance.",
+        "body": "Body copy goes here.",
+        "tags": [
+          "colour"
+        ],
+        "cover": "",
+        "published": true,
+        "order": 1
+      }
+    ]
+  },
+  "radio": {
+    "title": "My Servers",
+    "tagline": "A custom animated radio player — placeholder channels for the studio servers while they spin up.",
+    "visualizer": {
+      "style": "wave",
+      "color": "#2ef2c8",
+      "color2": "#2b7fff",
+      "bars": 64,
+      "smoothing": 0.82
+    },
+    "stations": [
+      {
+        "id": "r1",
+        "name": "Server 01 · Aurora",
+        "url": "https://ice2.somafm.com/groovesalad-128-mp3",
+        "genre": "Downtempo",
+        "color": "#2ef2c8",
+        "enabled": true
+      },
+      {
+        "id": "r2",
+        "name": "Server 02 · Monsoon",
+        "url": "https://ice2.somafm.com/dronezone-128-mp3",
+        "genre": "Ambient",
+        "color": "#2b7fff",
+        "enabled": true
+      },
+      {
+        "id": "r3",
+        "name": "Server 03 · Firefly",
+        "url": "https://ice2.somafm.com/deepspaceone-128-mp3",
+        "genre": "Atmospheric",
+        "color": "#7b5cff",
+        "enabled": true
+      }
+    ]
+  },
+  "pages": [
+    {
+      "id": "pg1",
+      "title": "Privacy",
+      "slug": "privacy",
+      "body": "## Privacy\n\nThis page is editable from the dashboard.",
+      "published": false,
+      "inNav": false,
+      "order": 1
+    }
+  ],
+  "contact": {
+    "title": "Let’s make something wild",
+    "body": "Commissions, collaborations or just a good idea — the studio inbox is open.",
+    "showForm": true,
+    "formNote": "Or email directly.",
+    "locationLine": "Colombo, Sri Lanka"
+  },
+  "footer": {
+    "text": "© {year} DK. All rights reserved.",
+    "credit": "Designed & built in the jungle."
+  }
+}

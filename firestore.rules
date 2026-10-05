@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// PROWEB CMS — Firestore security rules.
+// Deploy with:  firebase deploy --only firestore:rules
+//
+// The portfolio is public read-only; the dashboard publishes edits with the
+// shipped web API key behind the client-side passcode. That is acceptable for
+// a demo portfolio. Before storing anything private, add Firebase Auth and
+// require a signed-in user for writes:
+//   allow write: if request.auth != null;
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // content/site    = the whole CMS document (nav, hero, all collections).
+    // content/logos   = per-collection mirrors (also graphics, photography,
+    //                   videography) written in the same batch on publish.
+    match /content/{docId} {
+      allow read: if true;
+      allow write: if true;   // demo mode — require auth before production
+    }
+  }
+}
