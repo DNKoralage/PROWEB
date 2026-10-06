@@ -204,6 +204,34 @@
     return bar;
   }
 
+  /* ------------------------------------------------- thumbnail grid helper */
+
+  /**
+   * Grid of small clickable thumbnails for uploaded images. Thumbs stop
+   * propagation so they open the lightbox at that exact index instead of
+   * triggering the parent card handler at index 0.
+   */
+  function thumbStrip(images, groupId, max, photos) {
+    var list = (images || []).filter(function (im) { return im && (im.src || im.thumb); });
+    if (!list.length) return '';
+    var show = Math.max(1, Math.min(max || 4, list.length));
+    var html = '<div class="dk-thumbs" role="group" aria-label="Image thumbnails">';
+    for (var i = 0; i < show; i++) {
+      var im = list[i];
+      var src = (photos ? (im.thumb || im.src) : (im.src || im.thumb)) || '';
+      html += '<button type="button" class="dk-thumb" data-thumb-group="' + esc(groupId || '') + '"' +
+        ' data-thumb-index="' + i + '" aria-label="Open image ' + (i + 1) + '"' +
+        ' data-cursor="label" data-cursor-label="Zoom">' +
+        '<img src="' + esc(DK.mediaSrc(src)) + '" alt="' + esc(im.caption || im.alt || '') + '"' +
+        ' loading="lazy" decoding="async">' +
+        '<span class="dk-thumb__zoom" aria-hidden="true">+</span>' +
+        (i === show - 1 && list.length > show
+          ? '<span class="dk-thumb__more" aria-hidden="true">+' + (list.length - show + 1) + '</span>' : '') +
+      '</button>';
+    }
+    return html + '</div>';
+  }
+
   /* ------------------------------------------------------------------ logos */
 
   function renderLogos(doc) {
@@ -274,6 +302,7 @@
         '<div class="dk-card__body">' +
           '<h3 class="dk-card__title">' + esc(item.title) + '</h3>' +
           (item.description ? '<p class="dk-card__desc">' + esc(item.description) + '</p>' : '') +
+          thumbStrip(item.images || [], item.id, 4) +
           '<ul class="dk-card__tags">' +
             (item.tags || []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
           '</ul>' +
@@ -321,6 +350,7 @@
             (album.date ? '<span>' + esc(DK.formatDate(album.date)) + '</span>' : '') +
             (album.location ? '<span>' + esc(album.location) + '</span>' : '') +
           '</p>' +
+          thumbStrip(album.photos || [], album.id, 4, true) +
         '</div>';
       grid.appendChild(card);
     });
@@ -585,9 +615,12 @@
     this.items = [];
     this.index = 0;
     this.onClose = null;
+    this.zoom = 1;
   }
 
   Lightbox.WINDOW = 24;
+  Lightbox.MIN_ZOOM = 1;
+  Lightbox.MAX_ZOOM = 4;
 
   Lightbox.prototype.open = function (items, startIndex, meta) {
     this.close(true);
@@ -640,11 +673,34 @@
     node.querySelector('.dk-lightbox__close').addEventListener('click', function () { self.close(); });
     var prev = node.querySelector('.dk-lightbox__nav--prev');
     var next = node.querySelector('.dk-lightbox__nav--next');
-    if (prev) prev.addEventListener('click', function () { self.go(-1); });
-    if (next) next.addEventListener('click', function () { self.go(1); });
+    if (prev) prev.addEventListener('click', function (e) { e.stopPropagation(); self.go(-1); });
+    if (next) next.addEventListener('click', function (e) { e.stopPropagation(); self.go(1); });
     node.addEventListener('click', function (e) {
       if (e.target === stage) self.close();
     });
+
+    // Click-to-zoom on the main image + wheel zoom + drag-to-pan while zoomed.
+    this.zoom = 1;
+    this._pan = null;
+    this.img.addEventListener('click', function (e) { e.stopPropagation(); self.setZoom(self.zoom > 1 ? 1 : 2); });
+    this.img.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var step = e.deltaY < 0 ? 0.25 : -0.25;
+      self.setZoom(self.zoom + step);
+    }, { passive: false });
+    this.img.addEventListener('mousedown', function (e) {
+      if (self.zoom <= 1) return;
+      self._pan = { x: e.clientX, y: e.clientY, l: self.figure.scrollLeft, t: self.figure.scrollTop };
+      e.preventDefault();
+    });
+    this._move = function (e) {
+      if (!self._pan || !self.figure) return;
+      self.figure.scrollLeft = self._pan.l - (e.clientX - self._pan.x);
+      self.figure.scrollTop = self._pan.t - (e.clientY - self._pan.y);
+    };
+    this._up = function () { self._pan = null; };
+    document.addEventListener('mousemove', this._move);
+    document.addEventListener('mouseup', this._up);
 
     this._key = function (e) {
       if (e.key === 'Escape') { e.preventDefault(); self.close(); }
@@ -656,11 +712,22 @@
     this.render();
   };
 
+  Lightbox.prototype.setZoom = function (level) {
+    var z = Math.max(Lightbox.MIN_ZOOM, Math.min(Lightbox.MAX_ZOOM, Number(level) || 1));
+    this.zoom = z;
+    if (!this.img || !this.figure) return;
+    this.img.style.transform = z > 1 ? 'scale(' + z + ')' : '';
+    this.img.style.transformOrigin = 'center center';
+    this.img.classList.toggle('is-zoomed', z > 1);
+    this.figure.classList.toggle('is-zoomed', z > 1);
+  };
+
   Lightbox.prototype.go = function (delta) {
     var next = this.index + delta;
     if (next < 0) next = this.items.length - 1;
     if (next >= this.items.length) next = 0;
     this.index = next;
+    this.setZoom(1);
     this.render();
     if (DK.sound) DK.sound.play('hover');
   };
@@ -671,7 +738,9 @@
 
     this.img.src = DK.mediaSrc(item.src) || item.src;
     this.img.alt = item.caption || item.alt || '';
-    this.caption.textContent = item.caption || '';
+    this.caption.textContent = item.caption
+      ? item.caption + ' — click image or scroll to zoom'
+      : 'Click image or scroll to zoom';
 
     var counter = this.node.querySelector('.dk-lightbox__count');
     if (counter) {
@@ -705,6 +774,10 @@
   Lightbox.prototype.close = function (silent) {
     if (!this.node) return;
     document.removeEventListener('keydown', this._key);
+    if (this._move) document.removeEventListener('mousemove', this._move);
+    if (this._up) document.removeEventListener('mouseup', this._up);
+    this._pan = null;
+    this.zoom = 1;
     this.node.remove();
     this.node = null;
     document.documentElement.classList.remove('dk-modal-open');
@@ -912,8 +985,49 @@
   function wire(root, doc, refs) {
     var lightbox = new Lightbox();
 
+    // Resolve the full image list for a thumbnail group id.
+    function groupItems(groupId) {
+      var out = null;
+      (doc.collections.graphics || []).forEach(function (g) {
+        if (g.id === groupId) {
+          out = (g.images || []).map(function (im) {
+            return { src: im.src, thumb: im.src, caption: im.caption };
+          });
+        }
+      });
+      if (!out) {
+        (doc.collections.photography || []).forEach(function (a) {
+          if (a.id === groupId) {
+            out = (a.photos || []).map(function (p) {
+              return { src: p.src, thumb: p.thumb, caption: p.caption, alt: p.caption };
+            });
+          }
+        });
+      }
+      return out;
+    }
+
+    function groupTitle(groupId) {
+      var title = '';
+      (doc.collections.graphics || []).forEach(function (g) { if (g.id === groupId) title = g.title; });
+      (doc.collections.photography || []).forEach(function (a) { if (a.id === groupId) title = a.title; });
+      return title;
+    }
+
+    function openThumb(btn) {
+      var items = groupItems(btn.dataset.thumbGroup);
+      if (!items || !items.length) { DK.toast('No images in this set yet.', 'info'); return; }
+      var at = Math.max(0, Math.min(items.length - 1, Number(btn.dataset.thumbIndex) || 0));
+      lightbox.open(items, at, { title: groupTitle(btn.dataset.thumbGroup) });
+    }
+
     // Cards: click and keyboard activation.
+    // Thumbnail buttons open the lightbox at their own index; the card
+    // itself still opens at index 0 for backwards compatibility.
     root.addEventListener('click', function (e) {
+      var thumb = e.target.closest('.dk-thumb');
+      if (thumb) { e.stopPropagation(); openThumb(thumb); return; }
+
       var card = e.target.closest('.dk-card, .dk-logo-card');
       if (card) { openCard(card, doc, lightbox); return; }
 
@@ -944,9 +1058,11 @@
       }
     });
 
-    // Keyboard activation for the card grid.
+    // Keyboard activation for the card grid + thumbnail grid.
     root.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.key !== ' ') return;
+      var thumb = e.target.closest('.dk-thumb');
+      if (thumb) { e.preventDefault(); openThumb(thumb); return; }
       var card = e.target.closest('.dk-card, .dk-logo-card');
       if (!card) return;
       e.preventDefault();

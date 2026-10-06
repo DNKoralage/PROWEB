@@ -1062,6 +1062,79 @@ p:last-child { margin-bottom: 0; }
   overflow-x: auto;
   border-top: 1px solid var(--dk-line);
 }
+.dk-lightbox__thumb {
+  flex: none;
+  width: 56px; height: 56px;
+  padding: 0;
+  border: 1px solid var(--dk-line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--dk-forest-900);
+  cursor: zoom-in;
+  opacity: 0.65;
+  transition: opacity 220ms var(--dk-ease), border-color 220ms var(--dk-ease), transform 220ms var(--dk-ease);
+}
+.dk-lightbox__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dk-lightbox__thumb:hover { opacity: 1; transform: translateY(-2px); }
+.dk-lightbox__thumb.is-active { opacity: 1; border-color: var(--dk-accent); }
+
+/* Zoomable main image: click toggles 1x / 2x, wheel zooms, drag pans. */
+.dk-lightbox__img { cursor: zoom-in; transition: transform 240ms var(--dk-ease); }
+.dk-lightbox__img.is-zoomed { cursor: zoom-out; }
+.dk-lightbox__figure.is-zoomed { overflow: auto; max-height: 100%; }
+.dk-lightbox__zoom-hint { color: var(--dk-ink-mute); font-size: 0.72rem; letter-spacing: 0.08em; }
+
+/* ------------------------------------------------------- thumbnail grids */
+.dk-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+.dk-thumbs--inline { margin-top: 0; }
+.dk-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid var(--dk-line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--dk-forest-900);
+  cursor: zoom-in;
+  transition: transform 280ms var(--dk-ease), border-color 280ms var(--dk-ease), box-shadow 280ms var(--dk-ease);
+}
+.dk-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 500ms var(--dk-ease); }
+.dk-thumb:hover, .dk-thumb:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--dk-accent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  outline: none;
+}
+.dk-thumb:hover img, .dk-thumb:focus-visible img { transform: scale(1.08); }
+.dk-thumb__zoom {
+  position: absolute;
+  right: 0.45rem; bottom: 0.45rem;
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: rgba(1, 7, 5, 0.72);
+  border: 1px solid var(--dk-line);
+  color: var(--dk-accent);
+  font-size: 0.9rem;
+  line-height: 1;
+  pointer-events: none;
+}
+.dk-thumb__more {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(1, 7, 5, 0.62);
+  color: var(--dk-ink);
+  font-weight: 700;
+  font-size: var(--dk-step-0);
+  pointer-events: none;
+}
 
 /* ------------------------------------------------------------- video box */
 .dk-videobox {

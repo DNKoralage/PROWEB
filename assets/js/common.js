@@ -636,13 +636,29 @@
 
     // Seed and Firestore resolve in parallel; the bridge bounds the cloud
     // call, so the worst case only adds FETCH_BUDGET to the local load.
+    // Last-write-wins: the newer __updatedAt wins so a fresh local publish
+    // is never clobbered by a stale Firestore doc after a refresh, and a
+    // newer Firestore publish from another device still wins. The winner is
+    // mirrored back to localStorage so refreshes are stable offline.
     var cloud = DK.cloud.fetch().then(function (remote) {
       if (remote && typeof remote === 'object' && remote.__updatedAt) return remote;
       return null;
     });
     return Promise.all([seed, cloud]).then(function (pair) {
-      // Firestore wins whenever it actually has a document.
-      return pair[1] || pair[0];
+      var localDoc = pair[0] || null;
+      var remoteDoc = pair[1] || null;
+      if (!remoteDoc) return localDoc;
+      if (!localDoc) {
+        try { DK.store.set('content', remoteDoc); } catch (e) { /* ignore */ }
+        return remoteDoc;
+      }
+      var localAt = Number(localDoc.__updatedAt) || 0;
+      var remoteAt = Number(remoteDoc.__updatedAt) || 0;
+      if (remoteAt > localAt) {
+        try { DK.store.set('content', remoteDoc); } catch (e) { /* ignore */ }
+        return remoteDoc;
+      }
+      return localDoc;
     });
   };
 

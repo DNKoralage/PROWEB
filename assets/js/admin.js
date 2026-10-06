@@ -1313,22 +1313,17 @@
   }
 
   function reset() {
-    if (!global.confirm('Discard local edits and restore the shipped content (also in Firestore)?')) return;
+    if (!global.confirm('Discard local edits and restore the shipped content? (Firestore is left untouched.)')) return;
     DK.clearContent();
     DK.loadContent(undefined, true).then(function (d) {
       doc = d;
       dirty = false;
       openItem = null;
+      lastSyncedAt = 0;
       renderShell();
       if (DK.sound) DK.sound.play('toggleOff');
-      DK.toast('Reset to shipped content.', 'success');
-      if (DK.cloud && typeof DK.cloud.save === 'function') {
-        // Restore the shipped seed in Firestore too, timestamping the write
-        // up front so our own snapshot echo is ignored.
-        var at = Date.now();
-        lastSyncedAt = at;
-        DK.cloud.save(doc, at).then(function () { paintCloud(); });
-      }
+      DK.toast('Reset to shipped content (local only — Firestore untouched).', 'success');
+      paintCloud();
     });
   }
 
@@ -1425,16 +1420,27 @@
       };
 
       // Live Firestore sync: refresh the pill on status changes and adopt
-      // remote publishes from other devices — but never while dirty.
+      // remote publishes from other devices — but never while dirty, never
+      // our own echo, and never an older remote over a newer local doc.
       if (DK.cloud) {
+        try { lastSyncedAt = Number(doc.__updatedAt) || lastSyncedAt; } catch (e) { /* ignore */ }
         if (typeof DK.cloud.onStatus === 'function') {
           DK.cloud.onStatus(function () { paintCloud(); });
         }
         if (typeof DK.cloud.subscribe === 'function') {
           DK.cloud.subscribe(function (remote) {
             if (dirty || !remote || !remote.__updatedAt) return;
-            if (remote.__updatedAt === lastSyncedAt || remote.__updatedAt === doc.__updatedAt) return;
+            if (remote.__updatedAt === lastSyncedAt) return;
+            var curAt = Number(doc.__updatedAt) || 0;
+            if (Number(remote.__updatedAt) <= curAt) return;
             doc = remote;
+            // Mirror the winning remote locally so a refresh keeps it and
+            // never flips back to a stale copy.
+            try {
+              var payload = DK.normalise(remote);
+              payload.__updatedAt = remote.__updatedAt;
+              DK.store.set('content', payload);
+            } catch (e) { /* storage unavailable — keep in memory */ }
             openItem = null;
             renderPanel();
             DK.toast('Content updated from Firestore.', 'info');
